@@ -1,0 +1,3 @@
+data_generation:
+  num_users: 4
+  timesteps: 20
