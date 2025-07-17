@@ -39,21 +39,26 @@ class DataGenerator:
             attacker_influences=attacker_influences,
             opinion_state=initial_opinions
         )
+    def generate_attacker_input(self, N, gamma: float = 0.1):
+        noise = np.random.uniform(low=0.0, high=gamma, size=(N,1))
+        attacker_input = (np.ones((N,1))-np.ones((N,1))*gamma) - noise
+        return attacker_input
 
-    def step(self, control_input: np.ndarray, atacker_input: np.ndarray):
+
+    def step(self, control_input: np.ndarray, attacker_input: np.ndarray):
         # Extended Friedkin Johnsen model step
         user_weights = self.state.get_user_influence_weights()
 
         self.state.opinion_state = (
             user_weights @ self.state.user_influence_matrix @ self.state.opinion_state +
             self.state.controller_influences @ control_input +
-            self.state.attacker_influences @ atacker_input
+            self.state.attacker_influences @ attacker_input
         )
 
     def generate(self):
         for step in range(100):
             control_input = np.random.rand(self.num_users)
-            attacker_input = np.random.rand(self.num_users)
+            attacker_input = self.generate_attacker_input(self.num_users)
 
             self.step(control_input, attacker_input)
 
