@@ -1,11 +1,14 @@
 from dataclasses import dataclass
+import logging
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
-from kalman_filter import SensitivityEstimator
 from adversarial_agent import AdversarialAgent
 from controller import Controller
-from utils import NoiseGenerator
+from controller import SensitivityEstimator
+
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 
 @dataclass
@@ -37,14 +40,14 @@ class State:
 class DataGenerator:
     
     def __init__(self, config):
-        
         np.random.seed(config['seed'])
         self.debug = config['debug']
-        
+        self.log = logging.getLogger(f"\033[96m[{self.__class__.__name__}]\033[0m")
+        if self.debug: self.log.setLevel(level = logging.DEBUG)
         # initialize network
         self.num_users = config['network']['num_users']
         self.num_steps = config['network']['num_steps']
-        print(f"\033[93m[DataGenerator]\033[0m Users: {self.num_users}, Steps: {self.num_steps}.")
+        self.log.info(f"\033[93m[DataGenerator]\033[0m Users: {self.num_users}, Steps: {self.num_steps}.")
         self.state = self.generate_initial_state(config)
         
         # initialize adversarial agent
@@ -135,16 +138,14 @@ class DataGenerator:
                 self.sensitivity_estimator.estimation_errors.append(estimation_error)
                 self.sensitivity_estimator.error_steps.append(step)
                 
-                # Print progress every 10 steps (for debugging, can be removed)
+                # self.log.info progress every 10 steps (for debugging, can be removed)
                 if self.debug and step % 10 == 0:
-                    print(f"\nStep {step}:")
-                    print("Estimated sensitivity:\n", np.array2string(sensitivity_estimate, formatter={'float_kind':'{:0.2f}'.format}))
-                    print("True sensitivity:\n", np.array2string(true_sensitivity, formatter={'float_kind':'{:0.2f}'.format}))
-                    print(f"Frobenius norm of estimation error: {estimation_error:.6f}")
-                    print(f"Covariance trace (uncertainty): {kalman_covariance_trace:.6f}")
-                    print(f"Frobenius norm of estimation error: {estimation_error:.6f}")
-                    print(f"Covariance trace (uncertainty): {kalman_covariance_trace:.6f}")
-                    print("-" * 60)
+                    self.log.debug("\nStep %d:", step)
+                    self.log.debug("Estimated sensitivity:\n%s", np.array2string(sensitivity_estimate, formatter={'float_kind':'{:0.2f}'.format}))
+                    self.log.debug("True sensitivity:\n%s", np.array2string(true_sensitivity, formatter={'float_kind':'{:0.2f}'.format}))
+                    self.log.debug("Frobenius norm of estimation error: %.6f", estimation_error)
+                    self.log.debug("Covariance trace (uncertainty): %.6f", kalman_covariance_trace)
+                    self.log.debug("-" * 60)
             
             # Store current values for next iteration
             prev_control_input = control_input.copy()
@@ -168,7 +169,7 @@ class DataGenerator:
         steps = self.sensitivity_estimator.error_steps
         
         if not errors:
-            print("No estimation errors to plot.")
+            self.log.info("No estimation errors to plot.")
             return
         
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 10))
@@ -222,4 +223,4 @@ class DataGenerator:
         plt.tight_layout()
         plt.savefig(filename, dpi=300, bbox_inches='tight')
         plt.close()
-        print(f"Plot saved as {filename}")
+        self.log.info("Plot saved as %s", filename)

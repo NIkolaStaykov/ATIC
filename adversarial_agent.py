@@ -1,13 +1,15 @@
 import numpy as np
+import logging
+import sys
 
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 class AdversarialAgent:
-    
     def __init__(self, num_users: int, gamma: float):
-
+        self.log = logging.getLogger(f"\033[94m[{self.__class__.__name__}]\033[0m")
         self.num_users = num_users
         self.gamma = gamma
-        print(f"\033[94m[AdversarialAgent]\033[0m Users: {self.num_users}, Gamma: {self.gamma}.")
+        self.log.info("Users: %d, Gamma: %f.", self.num_users, self.gamma)
         
     def get_random_input(self):
         """Generate random input for the adversarial agent"""
