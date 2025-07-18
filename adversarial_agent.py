@@ -10,13 +10,12 @@ class AdversarialAgent:
         self.num_users = num_users
         self.gamma = gamma
         self.log.info("Users: %d, Gamma: %f.", self.num_users, self.gamma)
-        
-    def get_random_input(self):
-        """Generate random input for the adversarial agent"""
-        return np.random.rand(self.num_users)
     
-    def attack(self):
+    def get_input(self, random=False):
         """Generate custom adversarial input"""
-        noise = np.random.uniform(low=0.0, high=self.gamma, size=(self.num_users, 1))
-        attacker_input = (np.ones((self.num_users, 1)) - np.ones((self.num_users, 1)) * self.gamma) - noise
-        return attacker_input.flatten()
+        if random:
+            return np.random.rand(self.num_users)
+        else:
+            noise = np.random.uniform(low=0.0, high=self.gamma, size=(self.num_users, 1))
+            attacker_input = (np.ones((self.num_users, 1)) - np.ones((self.num_users, 1)) * self.gamma) - noise
+            return attacker_input.flatten()

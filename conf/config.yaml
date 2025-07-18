@@ -1,18 +1,16 @@
 data_generation:
-
   seed: 1
   debug: false
 
   network:
     num_users: 4
     num_steps: 100
-  
+
   adversary:
     gamma: 0.01
 
   controller:
     control_gain: 0.1
-
-  kalman_filter:
-    process_noise_var: 0.0001    # Q matrix variance
-    measurement_noise_var: 0.1  # R matrix variance
+    kalman_filter:
+      process_noise_var: 0.0001    # Q matrix variance
+      measurement_noise_var: 0.1  # R matrix variance
