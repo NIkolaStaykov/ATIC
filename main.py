@@ -9,7 +9,7 @@ def my_app(cfg):
     file.write("step,opinion_state,control_input,attacker_input\n")
     for data in generator.generate():
         file.write(f"{data['step']},{data['opinion_state']},{data['control_input']},{data['attacker_input']}\n")
-
+    generator.plot_estimation_error()
 
 if __name__ == "__main__":
     # The @hydra.main decorator handles calling my_app()
