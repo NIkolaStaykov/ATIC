@@ -2,6 +2,12 @@ from dataclasses import dataclass
 import numpy as np
 import matplotlib.pyplot as plt
 
+from kalman_filter import SensitivityEstimator
+from adversarial_agent import AdversarialAgent
+from controller import Controller
+from utils import NoiseGenerator
+
+
 @dataclass
 class State:
     # Model parameters
@@ -27,97 +33,47 @@ class State:
 
         return sensitivity_matrix
 
-class NoiseGenerator:
-    def __init__(self, noise_level: float):
-        self.noise_level = noise_level
 
-    def generate(self, shape: tuple) -> np.ndarray:
-        return np.random.normal(0, self.noise_level, shape)
-
-class SensitivityEstimator:
-    """Kalman Filter implementation"""
-    
-    def __init__(self, n_users: int, process_noise_var: float = 0.01, measurement_noise_var: float = 0.1):
-        self.n_users = n_users
-        self.n_states = n_users ** 2  # Size of vectorized sensitivity matrix
-        
-        # Parameters for Kalman updates
-        self.F = np.eye(self.n_states)  # Transition Matrix
-        self.Q = np.eye(self.n_states) * process_noise_var  # Process noise covariance
-        self.R = np.eye(n_users) * measurement_noise_var    # Measurement noise covariance
-        
-        # Initialize filter state
-        self.state_mean = np.zeros(self.n_states)
-        self.state_covariance = np.eye(self.n_states) * 1.0
-        
-        # History for tracking
-        self.estimation_errors = []
-        self.error_steps = []
-        self.sensitivity_estimates = []
-    
-    def update(self, delta_x_ss: np.ndarray, delta_p: np.ndarray):
-        """Update the Kalman filter with new measurement"""
-
-        # Skip if delta_p is too small
-        if np.linalg.norm(delta_p) < 1e-8:
-            return
-        
-        # Prediction step: l^k = l^{k-1} + w^{k-1}
-        # State prediction (random walk, mean unchanged)
-        state_pred = self.F @ self.state_mean
-        # Covariance prediction
-        covar_pred = self.F @ self.state_covariance @ self.F.T + self.Q
-        
-        # Construct observation matrix H = (delta_p)^T ⊗ I_n
-        H = np.kron(delta_p.reshape(1, -1), np.eye(self.n_users))
-        
-        # Innovation covariance
-        S = H @ covar_pred @ H.T + self.R
-        
-        # Kalman gain
-        try:
-            K = covar_pred @ H.T @ np.linalg.inv(S)
-        except np.linalg.LinAlgError:
-            K = covar_pred @ H.T @ np.linalg.pinv(S)
-        
-        # Innovation (measurement residual)
-        innovation = delta_x_ss - H @ state_pred
-        
-        # Update step
-        self.state_mean = state_pred + K @ innovation
-        self.state_covariance = (np.eye(self.n_states) - K @ H) @ covar_pred
-        
-        # Store the current estimate
-        sensitivity_matrix = self.get_sensitivity_matrix()
-        self.sensitivity_estimates.append(sensitivity_matrix.copy())
-    
-    def get_sensitivity_matrix(self) -> np.ndarray:
-        """Convert vectorized state to sensitivity matrix"""
-        return self.state_mean.reshape((self.n_users, self.n_users))
-    
-    def get_covariance_trace(self) -> float:
-        """Get trace of state covariance as uncertainty measure"""
-        return np.trace(self.state_covariance)
-    
 class DataGenerator:
+    
     def __init__(self, config):
-        self.num_users = config['num_users']
+        
+        np.random.seed(config['seed'])
+        self.debug = config['debug']
+        
+        # initialize network
+        self.num_users = config['network']['num_users']
+        self.num_steps = config['network']['num_steps']
+        print(f"\033[93m[DataGenerator]\033[0m Users: {self.num_users}, Steps: {self.num_steps}.")
         self.state = self.generate_initial_state(config)
-
-        # Initialize sensitivity estimator using pykalman
-        self.sensitivity_estimator = SensitivityEstimator(
-            n_users=self.num_users,
-            process_noise_var=config.get('process_noise_var', 0.01),
-            measurement_noise_var=config.get('measurement_noise_var', 0.1)
+        
+        # initialize adversarial agent
+        self.adversary = AdversarialAgent(
+            num_users=self.num_users, 
+            gamma=config['adversary']['gamma'],
+        )
+        
+        # initialize controller
+        self.controller = Controller(
+            num_users=self.num_users,
+            control_gain=config['controller']['control_gain'],
         )
 
+        # initialize sensitivity estimator using pykalman
+        self.sensitivity_estimator = SensitivityEstimator(
+            n_users=self.num_users,
+            process_noise_var=config['kalman_filter']['process_noise_var'],
+            measurement_noise_var=config['kalman_filter']['measurement_noise_var'],
+        )
+        
     @staticmethod
     def generate_initial_state(config):
         """Simulate the generation of an initial state based on the configuration"""
-        user_influence_matrix = np.random.rand(config['num_users'], config['num_users'])
-        controller_influences = np.diag(np.random.rand(config['num_users']))
-        attacker_influences = np.diag(np.random.rand(config['num_users']))
-        initial_opinions = np.random.rand(config['num_users'])
+        n_users = config['network']['num_users']
+        user_influence_matrix = np.random.rand(n_users, n_users)
+        controller_influences = np.diag(np.random.rand(n_users))
+        attacker_influences = np.diag(np.random.rand(n_users))
+        initial_opinions = np.random.rand(n_users)
 
         return State(
             user_influence_matrix=user_influence_matrix,
@@ -125,13 +81,7 @@ class DataGenerator:
             attacker_influences=attacker_influences,
             opinion_state=initial_opinions
         )
-    def generate_attacker_input(self, N, gamma: float = 0.1):
-        """Generate custom adversarial input"""
-        noise = np.random.uniform(low=0.0, high=gamma, size=(N,1))
-        attacker_input = (np.ones((N,1))-np.ones((N,1))*gamma) - noise
-        return attacker_input.flatten()
-
-
+        
     def step(self, control_input: np.ndarray, attacker_input: np.ndarray):
         """Extended Friedkin Johnsen model step"""
         user_weights = self.state.get_user_influence_weights()
@@ -148,13 +98,15 @@ class DataGenerator:
         prev_control_input = None
         prev_opinion_state = None
 
-        for step in range(100):
-            control_input = np.random.rand(self.num_users)
+        for step in range(self.num_steps):
+            
+            control_input = self.controller.recommend()
+            
             if step < 10: 
                 # Exploration phase for Kalman Filter
-                attacker_input = np.random.rand(self.num_users)
+                attacker_input = self.adversary.get_random_input()
             else:
-                attacker_input = self.generate_attacker_input(self.num_users)
+                attacker_input = self.adversary.attack()
 
             self.step(control_input, attacker_input)
 
@@ -184,7 +136,7 @@ class DataGenerator:
                 self.sensitivity_estimator.error_steps.append(step)
                 
                 # Print progress every 10 steps (for debugging, can be removed)
-                if step % 10 == 0:
+                if self.debug and step % 10 == 0:
                     print(f"\nStep {step}:")
                     print("Estimated sensitivity:\n", np.array2string(sensitivity_estimate, formatter={'float_kind':'{:0.2f}'.format}))
                     print("True sensitivity:\n", np.array2string(true_sensitivity, formatter={'float_kind':'{:0.2f}'.format}))
