@@ -1,6 +1,7 @@
 from omegaconf import OmegaConf
 import hydra
 from data_generator import DataGenerator
+from data_analysis import Plotter
 import pandas as pd
 
 @hydra.main(version_base=None, config_path="./conf", config_name="config")
@@ -17,8 +18,8 @@ def my_app(cfg):
         dataset = pd.concat([pd.DataFrame([data], columns=dataset.columns), dataset], axis=0,  ignore_index=True)
         file.write(f"{data['step']},{data['opinion_state']},{data['control_input']},{data['attacker_input']}\n")
     
-    # plotter = Plotter(dataset)
-    # plotter.plot_estimation_error()
+    plotter = Plotter(dataset)
+    plotter.plot_estimation_error()
 
 if __name__ == "__main__":
     # The @hydra.main decorator handles calling my_app()

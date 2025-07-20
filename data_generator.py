@@ -12,10 +12,12 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 @dataclass
 class State:
-    # Model parameters
+    # --- STATIC ---
+    # Base model parameters
     user_influence_matrix: np.ndarray
     controller_influences: np.ndarray
     attacker_influences: np.ndarray
+    # --- DYNAMIC ---
     # State
     opinion_state: np.ndarray
 
@@ -28,6 +30,7 @@ class State:
         user_weights = self.get_user_influence_weights()
         A_tilde = user_weights @ self.user_influence_matrix
         Gamma_p = self.controller_influences
+        # FIXME: Try except shouldn't be used for flow control
         try:
             sensitivity_matrix = np.linalg.inv(np.eye(N) - A_tilde) @ Gamma_p
         except np.linalg.LinAlgError:
@@ -78,7 +81,7 @@ class DataGenerator:
             opinion_state=initial_opinions
         )
         
-    def step(self, control_input: np.ndarray, attacker_input: np.ndarray):
+    def update_state(self, control_input: np.ndarray, attacker_input: np.ndarray):
         """Extended Friedkin Johnsen model step"""
         user_weights = self.state.get_user_influence_weights()
 
@@ -96,37 +99,26 @@ class DataGenerator:
 
         for step in range(self.num_steps):
             
-            control_input = self.controller.recommend()
+            self.controller.step(self.state)
+
+            control_input = self.controller.get_input()
+            attacker_input = self.adversary.get_input(random=(step < 10))
+
+            # This updates the state
+            self.update_state(control_input, attacker_input)
+
+            # Compute estimation error
+            true_sensitivity = self.state.get_true_sensitivity_matrix()
+            estimation_error = np.linalg.norm(self.controller.sensitivity_estimate - true_sensitivity, 'fro')
             
-            random_adversarial_input = True if step < 10 else False
-            attacker_input = self.adversary.get_input(random=random_adversarial_input)
-
-            self.step(control_input, attacker_input)
-
-            # Sensitivity estimation using pykalman
-            sensitivity_estimate = None
-            kalman_covariance_trace = None
-            estimation_error = None
-            
-            if step > 0 and prev_control_input is not None:
-
-                # TODO: Fix all this shit 
-                # Compute estimation error
-                true_sensitivity = self.state.get_true_sensitivity_matrix()
-                estimation_error = np.linalg.norm(sensitivity_estimate - true_sensitivity, 'fro')
-                
-                # Store for analysis
-                self.sensitivity_estimator.estimation_errors.append(estimation_error)
-                self.sensitivity_estimator.error_steps.append(step)
-                
-                # self.log.info progress every 10 steps (for debugging, can be removed)
-                if self.debug and step % 10 == 0:
-                    self.log.debug("\nStep %d:", step)
-                    self.log.debug("Estimated sensitivity:\n%s", np.array2string(sensitivity_estimate, formatter={'float_kind':'{:0.2f}'.format}))
-                    self.log.debug("True sensitivity:\n%s", np.array2string(true_sensitivity, formatter={'float_kind':'{:0.2f}'.format}))
-                    self.log.debug("Frobenius norm of estimation error: %.6f", estimation_error)
-                    self.log.debug("Covariance trace (uncertainty): %.6f", kalman_covariance_trace)
-                    self.log.debug("-" * 60)
+            # self.log.info progress every 10 steps (for debugging, can be removed)
+            if self.debug and step % 10 == 0:
+                self.log.debug("\nStep %d:", step)
+                self.log.debug("Estimated sensitivity:\n%s", np.array2string(self.controller.sensitivity_estimate, formatter={'float_kind':'{:0.2f}'.format}))
+                self.log.debug("True sensitivity:\n%s", np.array2string(true_sensitivity, formatter={'float_kind':'{:0.2f}'.format}))
+                self.log.debug("Frobenius norm of estimation error: %.6f", estimation_error)
+                self.log.debug("Covariance trace (uncertainty): %.6f", self.controller.kalman_covariance_trace)
+                self.log.debug("-" * 60)
             
 
 
@@ -135,8 +127,8 @@ class DataGenerator:
                 'opinion_state': self.state.opinion_state.copy(),
                 'control_input': control_input.copy(),
                 'attacker_input': attacker_input.copy(),
-                'sensitivity_estimate': sensitivity_estimate,
-                'kalman_covariance_trace': kalman_covariance_trace,
+                'sensitivity_estimate': self.controller.sensitivity_estimate,
+                'kalman_covariance_trace': self.controller.kalman_covariance_trace,
                 'estimation_error': estimation_error
             }
     

@@ -2,23 +2,21 @@ import matplotlib.pyplot as plt
 import logging
 import sys
 import numpy as np
+import pandas as pd
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 class Plotter:
-    def __init__(self, data):
+    def __init__(self, data: pd.DataFrame):
         self.log = logging.getLogger(f"\033[96m[{self.__class__.__name__}]\033[0m")
         self.data = data
 
     def plot_estimation_error(self, filename: str = "pykalman_estimation_error.png"):
         """Plot the estimation error and other metrics"""
 
-        errors = self.data.estimation_errors
-        steps = self.data.error_steps
-        
-        if not errors:
-            self.log.info("No estimation errors to plot.")
-            return
+        errors = self.data.loc[:, "estimation_error"]
+        steps = self.data.index
+        assert len(errors) > 0, "No estimation errors to plot"
         
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 10))
         
@@ -55,15 +53,13 @@ class Plotter:
         stats_text = f"""
         Filter Statistics:
         
-        Final Error: {errors[-1]:.6f}
+        Final Error: {errors.iloc[-1]:.6f}
         Mean Error: {np.mean(errors):.6f}
         Min Error: {np.min(errors):.6f}
         Max Error: {np.max(errors):.6f}
         Std Error: {np.std(errors):.6f}
         
         Total Updates: {len(errors)}
-        Users: {self.num_users}
-        State Dimension: {self.num_users**2}
         """
         ax4.text(0.1, 0.9, stats_text, transform=ax4.transAxes, fontsize=11,
                 verticalalignment='top', fontfamily='monospace')

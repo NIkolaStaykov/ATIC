@@ -25,7 +25,7 @@ class SensitivityEstimator:
         self.error_steps = []
         self.sensitivity_estimates = []
         
-        self.log.info("Users: %d, Process Noise Variance: %.4f, Measurement Noise Variance: %.4f.", self.n_users, process_noise_var, measurement_noise_var)
+        self.log.info("Users: %d, Process Noise Variance: %.4f, Measurement Noise Variance: %.4f.", self.n_users, cfg["process_noise_var"], cfg["measurement_noise_var"])
     
     def update(self, delta_x_ss: np.ndarray, delta_p: np.ndarray):
         """Update the Kalman filter with new measurement"""
@@ -47,6 +47,7 @@ class SensitivityEstimator:
         S = H @ covar_pred @ H.T + self.R
         
         # Kalman gain
+        # FIXME: try except used for flow control
         try:
             K = covar_pred @ H.T @ np.linalg.inv(S)
         except np.linalg.LinAlgError:
@@ -80,24 +81,43 @@ class Controller:
         self.control_gain = cfg["control_gain"]
         self.sensitivity_estimator = SensitivityEstimator(cfg = cfg["kalman_filter"], n_users = self.num_users)
 
+        self.control_input = np.zeros(self.num_users)
+        self.prev_control_input = None
+        self.prev_opinion_state = None
+
+        self.kalman_covariance_trace = None
+        self.sensitivity_estimate = np.zeros([self.num_users, self.num_users])
+
         self.log.info("Users: %d, control gain=%f.", self.num_users, self.control_gain)
     
-    def recommend(self):
-        control_inputs = np.random.rand(self.num_users)
-        return control_inputs
+    def get_input(self):
+        return self.control_input
     
     def step(self, state):
-        # Compute deltas for Kalman filter
-        delta_x_ss = state.opinion_state - prev_opinion_state
-        delta_p = control_input - self.prev_control_input
-        
-        # Update sensitivity estimator
-        self.sensitivity_estimator.update(delta_x_ss, delta_p)
-        
-        # Get current estimates
-        sensitivity_estimate = self.sensitivity_estimator.get_sensitivity_matrix()
-        kalman_covariance_trace = self.sensitivity_estimator.get_covariance_trace()
+        # TODO: Review! Right now the first two steps give control inputs 0 and random respectively and then the actual optimization starts
+        # The Kalman filter is updated after the controller input is calculated
+        # Possibly we also need a *predict* f-n in the Kalman filter class
 
-        # Store current values for next iteration
-        prev_control_input = control_input.copy()
-        prev_opinion_state = self.state.opinion_state.copy()
+        if self.prev_control_input is not None:
+            # Compute deltas for Kalman filter
+            delta_x_ss = state.opinion_state - self.prev_opinion_state
+            delta_p = self.control_input - self.prev_control_input
+            
+            # Update sensitivity estimator
+            self.sensitivity_estimator.update(delta_x_ss, delta_p)            
+            # Get current estimates, to be used in the gradient descent step
+            self.sensitivity_estimate = self.sensitivity_estimator.get_sensitivity_matrix()
+            self.kalman_covariance_trace = self.sensitivity_estimator.get_covariance_trace()
+
+            # Get the next control input
+            # TODO: Implement gradient descent
+            self.prev_control_input = self.control_input.copy()
+            self.control_input = np.random.rand(self.num_users)
+
+        else:
+            # First step, no previous values, cannot update Kalman because we need the diff of current and prev state
+            # We have to use the prediction from the kalman filter 
+            self.prev_control_input = self.control_input.copy()
+            self.control_input = np.random.rand(self.num_users)
+
+        self.prev_opinion_state = state.opinion_state
