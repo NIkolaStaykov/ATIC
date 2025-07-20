@@ -15,7 +15,7 @@ class Plotter:
         """Plot the estimation error and other metrics"""
 
         errors = self.data.loc[:, "estimation_error"]
-        steps = self.data.index
+        steps = self.data.loc[:, "step"]
         assert len(errors) > 0, "No estimation errors to plot"
         
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 10))

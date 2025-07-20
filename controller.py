@@ -98,26 +98,22 @@ class Controller:
         # The Kalman filter is updated after the controller input is calculated
         # Possibly we also need a *predict* f-n in the Kalman filter class
 
+        self.control_input = np.random.rand(self.num_users)
+
         if self.prev_control_input is not None:
+            # Get the next control input
+            # TODO: Implement gradient descent
+
             # Compute deltas for Kalman filter
             delta_x_ss = state.opinion_state - self.prev_opinion_state
             delta_p = self.control_input - self.prev_control_input
             
             # Update sensitivity estimator
             self.sensitivity_estimator.update(delta_x_ss, delta_p)            
+
             # Get current estimates, to be used in the gradient descent step
             self.sensitivity_estimate = self.sensitivity_estimator.get_sensitivity_matrix()
             self.kalman_covariance_trace = self.sensitivity_estimator.get_covariance_trace()
 
-            # Get the next control input
-            # TODO: Implement gradient descent
-            self.prev_control_input = self.control_input.copy()
-            self.control_input = np.random.rand(self.num_users)
-
-        else:
-            # First step, no previous values, cannot update Kalman because we need the diff of current and prev state
-            # We have to use the prediction from the kalman filter 
-            self.prev_control_input = self.control_input.copy()
-            self.control_input = np.random.rand(self.num_users)
-
+        self.prev_control_input = self.control_input.copy()
         self.prev_opinion_state = state.opinion_state
