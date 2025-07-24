@@ -1,6 +1,6 @@
 data_generation:
   seed: 1
-  debug: false
+  debug: true
 
   network:
     num_users: 4

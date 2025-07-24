@@ -53,7 +53,7 @@ class Plotter:
         stats_text = f"""
         Filter Statistics:
         
-        Final Error: {errors.iloc[-1]:.6f}
+        Final Error: {errors.iloc[1]:.6f} 
         Mean Error: {np.mean(errors):.6f}
         Min Error: {np.min(errors):.6f}
         Max Error: {np.max(errors):.6f}

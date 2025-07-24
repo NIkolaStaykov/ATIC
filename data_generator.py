@@ -100,12 +100,35 @@ class DataGenerator:
         for step in range(self.num_steps):
             
             self.controller.step(self.state)
+            if step < 10:
+                control_input = np.random.rand(self.num_users)
+            else:
+                self.controller.step(self.state)
+                control_input = self.controller.get_input()
+            attacker_input = self.adversary.get_input()
 
-            control_input = self.controller.get_input()
-            attacker_input = self.adversary.get_input(random=(step < 10))
-
+            # Store state before update
+            prev_opinion_state = self.state.opinion_state.copy()
             # This updates the state
             self.update_state(control_input, attacker_input)
+
+            '''
+            Not sure why, but moving the Kalman Filter update here (and not in controller.py), resolves 
+            the error spike issue. Maybe the Filter was being updated with the wrong arguments.g'''
+
+            # Update Kalman filter ONLY here, not in Controller
+            if step > 0:
+                delta_x_ss = self.state.opinion_state - prev_opinion_state
+                delta_p = control_input - prev_control_input
+                
+                if np.linalg.norm(delta_p) > 1e-6:
+                    self.controller.sensitivity_estimator.update(delta_x_ss, delta_p)
+                    self.controller.sensitivity_estimate = self.controller.sensitivity_estimator.get_sensitivity_matrix()
+                    self.controller.kalman_covariance_trace = self.controller.sensitivity_estimator.get_covariance_trace()
+
+            # Store for next iteration
+            prev_control_input = control_input.copy()
+
 
             # Compute estimation error
             true_sensitivity = self.state.get_true_sensitivity_matrix()
