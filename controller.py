@@ -94,19 +94,25 @@ class Controller:
         return self.control_input
     
     def step(self, state):
-        # TODO: Review! Right now the first two steps give control inputs 0 and random respectively and then the actual optimization starts
-        # The Kalman filter is updated after the controller input is calculated
-        # Possibly we also need a *predict* f-n in the Kalman filter class
-        '''
-        Here I removed the KF updates and moved them to data_generator.py, generate()!
-        '''
-        self.control_input = np.random.rand(self.num_users)
+        # Update Kalman filter if we have previous data
+        if self.prev_control_input is not None and self.prev_opinion_state is not None:
+            delta_x_ss = state.opinion_state - self.prev_opinion_state
+            delta_p = self.prev_control_input - (self.prev_prev_control_input if hasattr(self, 'prev_prev_control_input') else np.zeros(self.num_users))
+            
+            if np.linalg.norm(delta_p) > 1e-6:
+                self.sensitivity_estimator.update(delta_x_ss, delta_p)
+                self.sensitivity_estimate = self.sensitivity_estimator.get_sensitivity_matrix()
+                self.kalman_covariance_trace = self.sensitivity_estimator.get_covariance_trace()
 
-        self.prev_control_input = self.control_input.copy()
-        self.prev_opinion_state = state.opinion_state.copy()
-
-        # Store history for next iteration
+        # Store previous control input before generating new one
         if hasattr(self, 'prev_control_input') and self.prev_control_input is not None:
             self.prev_prev_control_input = self.prev_control_input.copy()
+
+        # Generate new control input
+        self.control_input = np.random.rand(self.num_users)
+
+        # Store current values for next iteration
+        self.prev_control_input = self.control_input.copy()
+        self.prev_opinion_state = state.opinion_state.copy()
         
 
