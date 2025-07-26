@@ -111,7 +111,7 @@ class DataGenerator:
             estimation_error = np.linalg.norm(self.controller.sensitivity_estimate - true_sensitivity, 'fro')
             
             # self.log.info progress every 10 steps (for debugging, can be removed)
-            if self.debug and step % 10 == 0:
+            if step % 10 == 0:
                 self.log.debug("\nStep %d:", step)
                 self.log.debug("Estimated sensitivity:\n%s", np.array2string(self.controller.sensitivity_estimate, formatter={'float_kind':'{:0.2f}'.format}))
                 self.log.debug("True sensitivity:\n%s", np.array2string(true_sensitivity, formatter={'float_kind':'{:0.2f}'.format}))

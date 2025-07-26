@@ -92,13 +92,13 @@ class Controller:
     
     def get_input(self):
         return self.control_input
-    
+        
     def step(self, state):
         # Update Kalman filter if we have previous data
         if self.prev_control_input is not None and self.prev_opinion_state is not None:
             delta_x_ss = state.opinion_state - self.prev_opinion_state
             delta_p = self.prev_control_input - (self.prev_prev_control_input if hasattr(self, 'prev_prev_control_input') else np.zeros(self.num_users))
-            
+            self.log.info(f"delta_x_ss: {delta_x_ss}, delta_p: {delta_p}")
             if np.linalg.norm(delta_p) > 1e-6:
                 self.sensitivity_estimator.update(delta_x_ss, delta_p)
                 self.sensitivity_estimate = self.sensitivity_estimator.get_sensitivity_matrix()
@@ -108,8 +108,16 @@ class Controller:
         if hasattr(self, 'prev_control_input') and self.prev_control_input is not None:
             self.prev_prev_control_input = self.prev_control_input.copy()
 
-        # Generate new control input
-        self.control_input = np.random.rand(self.num_users)
+            # Generate new control input
+            control_input_unclipped = self.prev_control_input + \
+                2*self.control_gain*self.sensitivity_estimate.T @ (self.prev_opinion_state - self.sensitivity_estimate @ self.prev_control_input)
+            # Clip control input to [-1, 1]
+            self.control_input = control_input_unclipped / max(control_input_unclipped)
+        else:
+            self.log.warning("No previous control input or opinion state to update Kalman filter.")
+            # If no previous control input, initialize to zero
+            self.control_input = np.random.rand(self.num_users)
+
 
         # Store current values for next iteration
         self.prev_control_input = self.control_input.copy()
