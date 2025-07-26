@@ -17,5 +17,5 @@ class AdversarialAgent:
             return np.random.rand(self.num_users)
         else:
             noise = np.random.uniform(low=0.0, high=self.gamma, size=(self.num_users, 1))
-            attacker_input = (np.ones((self.num_users, 1)) - np.ones((self.num_users, 1)) * self.gamma) - noise
+            attacker_input = (np.ones((self.num_users, 1)) - np.ones((self.num_users, 1)) * self.gamma) + noise
             return attacker_input.flatten()

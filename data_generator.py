@@ -70,8 +70,14 @@ class DataGenerator:
         """Simulate the generation of an initial state based on the configuration"""
         n_users = config['network']['num_users']
         user_influence_matrix = np.random.rand(n_users, n_users)
-        controller_influences = np.diag(np.random.rand(n_users))
-        attacker_influences = np.diag(np.random.rand(n_users))
+        # Make the matrix row-stochastic (rows sum to 1)
+        user_influence_matrix = user_influence_matrix / user_influence_matrix.sum(axis=1, keepdims=True)
+        
+        total_gamma_vec = np.random.rand(n_users)
+        controller_influences = np.diag(np.random.uniform(low=np.zeros(n_users), high=total_gamma_vec))
+        # attacker_influences = np.diag(np.random.rand(n_users))
+        attacker_influences = np.diag(total_gamma_vec) - controller_influences
+        
         initial_opinions = np.random.rand(n_users)
 
         return State(
@@ -97,7 +103,7 @@ class DataGenerator:
         for step in range(self.num_steps):
             
             # Update Kalman filter in controller, then get control input
-            self.controller.step(self.state)
+            self.controller.step(self.state, step=step)
             control_input = self.controller.get_input()
         
             # Get attacker input
