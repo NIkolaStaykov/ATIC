@@ -2,12 +2,15 @@ from dataclasses import dataclass
 import logging
 import sys
 import numpy as np
+from enum import Enum
 
 from adversarial_agent import AdversarialAgent
 from controller import Controller
 from controller import SensitivityEstimator
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+
+DataGeneratorType = Enum('DataGeneratorType', 'PURE WITH_ACTORS')
 
 
 @dataclass
@@ -43,10 +46,12 @@ class DataGenerator:
     
     def __init__(self, config):
         np.random.seed(config['seed'])
+        self.type = DataGeneratorType[config['type'].upper()]
         self.debug = config['debug']
         self.log = logging.getLogger(f"\033[96m{self.__class__.__name__}\033[0m")
         if self.debug: self.log.setLevel(level = logging.DEBUG)
 
+        self.log.info("DataGenerator type: %s, Debug mode: %s.", self.type.name, self.debug)
         # initialize network
         self.num_users = config['network']['num_users']
         self.num_steps = config['network']['num_steps']
@@ -65,15 +70,22 @@ class DataGenerator:
             self.num_users
         )
         
-    @staticmethod
-    def generate_initial_state(config):
+    def generate_initial_state(self, config):
         """Simulate the generation of an initial state based on the configuration"""
         n_users = config['network']['num_users']
         user_influence_matrix = np.random.rand(n_users, n_users)
         # Make the matrix row-stochastic (rows sum to 1)
         user_influence_matrix = user_influence_matrix / user_influence_matrix.sum(axis=1, keepdims=True)
         
-        total_gamma_vec = np.random.rand(n_users)
+        if self.type == DataGeneratorType.PURE:
+            total_gamma_vec = np.zeros(n_users)
+        elif self.type == DataGeneratorType.WITH_ACTORS:
+            # If actors are present, generate a random influence vector
+            # This could be modified to include specific actor influences
+            total_gamma_vec = np.random.rand(n_users)
+        else:
+            raise ValueError(f"Unknown DataGeneratorType: {self.type}")
+        
         controller_influences = np.diag(np.random.uniform(low=np.zeros(n_users), high=total_gamma_vec))
         # attacker_influences = np.diag(np.random.rand(n_users))
         attacker_influences = np.diag(total_gamma_vec) - controller_influences

@@ -1,16 +1,18 @@
 data_generation:
+  type: pure # [pure, with_actors]
   seed: 1
-  debug: true
+  debug: false
 
   network:
     num_users: 4
-    num_steps: 100
+    num_steps: 3000
 
   adversary:
     gamma: 0.01
 
   controller:
     control_gain: 0.1
+    type: random # [random, adversarial]
     kalman_filter:
       process_noise_var: 0.0001    # Q matrix variance
       measurement_noise_var: 0.1  # R matrix variance

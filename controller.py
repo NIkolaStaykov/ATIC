@@ -1,7 +1,10 @@
 import numpy as np
 import logging
 import sys
+from enum import Enum
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+
+ControllerType = Enum('ControllerType', 'RANDOM ADVERSARIAL')
 
 class SensitivityEstimator:
     """Kalman Filter implementation"""
@@ -77,6 +80,9 @@ class Controller:
     def __init__(self, cfg, num_users):
         self.log = logging.getLogger(f"\033[96m{self.__class__.__name__}\033[0m")
 
+        self.controller_type: ControllerType = ControllerType[cfg["type"].upper()]
+        self.log.info("Controller type: %s", self.controller_type.name)
+
         self.num_users = num_users
         self.control_gain = cfg["control_gain"]
         self.sensitivity_estimator = SensitivityEstimator(cfg = cfg["kalman_filter"], n_users = self.num_users)
@@ -95,8 +101,6 @@ class Controller:
         
     def step(self, state, step):
         # Update Kalman filter if we have previous data
-        if step < 10:
-            self.log.info(f"Step {step}, Opinion State: {state.opinion_state}, Control Input: {self.control_input}")
         if step > 0:
             delta_x_ss = state.opinion_state - self.prev_opinion_state
             delta_p = self.prev_control_inputs[0, :] - self.prev_control_inputs[1, :]
@@ -111,13 +115,18 @@ class Controller:
             self.prev_control_inputs[1, :] = self.prev_control_inputs[0, :].copy()
 
             # Generate new control input
-            control_input_unclipped = self.prev_control_inputs[0, :] + \
-                2*self.control_gain*self.sensitivity_estimate.T @ (self.prev_opinion_state - self.sensitivity_estimate @ self.prev_control_inputs[0, :])
-            # Clip control input to [-1, 1]
-            self.control_input = control_input_unclipped / max(control_input_unclipped)
-            # self.control_input = np.random.rand(self.num_users)
+            if self.controller_type == ControllerType.ADVERSARIAL:
+                control_input_unclipped = self.prev_control_inputs[0, :] + \
+                    2*self.control_gain*self.sensitivity_estimate.T @ (self.prev_opinion_state - self.sensitivity_estimate @ self.prev_control_inputs[0, :])
+                # Clip control input to [-1, 1]
+                self.control_input = control_input_unclipped / max(control_input_unclipped)
+            elif self.controller_type == ControllerType.RANDOM:
+                self.control_input = np.random.rand(self.num_users)
+            else:
+                raise ValueError(f"Unknown ControllerType: {self.controller_type}")
+            
         else:
-            self.log.info("Warmup, stay cozy")
+            self.log.debug("Warmup, stay cozy")
             # If no previous control input, initialize to zero
             self.control_input = np.random.rand(self.num_users)
 
