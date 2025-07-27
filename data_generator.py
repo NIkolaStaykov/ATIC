@@ -44,13 +44,13 @@ class DataGenerator:
     def __init__(self, config):
         np.random.seed(config['seed'])
         self.debug = config['debug']
-        self.log = logging.getLogger(f"\033[96m[{self.__class__.__name__}]\033[0m")
+        self.log = logging.getLogger(f"\033[96m{self.__class__.__name__}\033[0m")
         if self.debug: self.log.setLevel(level = logging.DEBUG)
 
         # initialize network
         self.num_users = config['network']['num_users']
         self.num_steps = config['network']['num_steps']
-        self.log.info(f"\033[93m[DataGenerator]\033[0m Users: {self.num_users}, Steps: {self.num_steps}.")
+        self.log.info(f"Users: {self.num_users}, Steps: {self.num_steps}.")
         self.state = self.generate_initial_state(config)
         
         # initialize adversarial agent

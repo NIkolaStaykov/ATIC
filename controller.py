@@ -7,7 +7,7 @@ class SensitivityEstimator:
     """Kalman Filter implementation"""
     
     def __init__(self, cfg, n_users: int):
-        self.log = logging.getLogger(f"\033[96m[{self.__class__.__name__}]\033[0m")
+        self.log = logging.getLogger(f"\033[96m{self.__class__.__name__}\033[0m")
         self.n_users = n_users
         self.n_states = n_users ** 2  # Size of vectorized sensitivity matrix
         
@@ -75,7 +75,7 @@ class SensitivityEstimator:
 class Controller:
     # NOTE: There is deffinitely a better way to pass repeating values with hydra
     def __init__(self, cfg, num_users):
-        self.log = logging.getLogger(f"\033[96m[{self.__class__.__name__}]\033[0m")
+        self.log = logging.getLogger(f"\033[96m{self.__class__.__name__}\033[0m")
 
         self.num_users = num_users
         self.control_gain = cfg["control_gain"]

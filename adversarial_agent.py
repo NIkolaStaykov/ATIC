@@ -6,7 +6,7 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 class AdversarialAgent:
     def __init__(self, num_users: int, gamma: float):
-        self.log = logging.getLogger(f"\033[94m[{self.__class__.__name__}]\033[0m")
+        self.log = logging.getLogger(f"\033[96m{self.__class__.__name__}\033[0m")
         self.num_users = num_users
         self.gamma = gamma
         self.log.info("Users: %d, Gamma: %f.", self.num_users, self.gamma)
