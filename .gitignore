@@ -2,3 +2,4 @@
 /__pycache__/
 estimation_error_plot.png
 pykalman_estimation_error.png
+opinion_evolution.png

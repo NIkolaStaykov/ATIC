@@ -20,6 +20,7 @@ def my_app(cfg):
     
     plotter = Plotter(dataset)
     plotter.plot_estimation_error()
+    plotter.plot_opinion_evolution()
 
 if __name__ == "__main__":
     # The @hydra.main decorator handles calling my_app()

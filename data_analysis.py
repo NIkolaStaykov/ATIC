@@ -68,3 +68,70 @@ class Plotter:
         plt.savefig(filename, dpi=300, bbox_inches='tight')
         plt.close()
         self.log.info("Plot saved as %s", filename)
+
+
+    def plot_opinion_evolution(self, num_users = 4, filename: str = "opinion_evolution.png"):
+        """Plot the evolution of select opinions."""
+
+        opinions = self.data.loc[:,"opinion_state"]
+        steps = self.data.loc[:, "step"]
+        assert len(opinions) > 0, "No opinions to plot"
+        
+        # Parse the opinion arrays (handle both string and array formats)
+        opinion_arrays = []
+        for opinion_data in opinions:
+                opinion_arrays.append(opinion_data)
+        
+        opinion_matrix = np.array(opinion_arrays)
+
+        n_timesteps, n_users_total = opinion_matrix.shape
+        
+        # Select random users to plot
+        selected_users = np.random.choice(n_users_total, 
+                                        size=min(num_users, n_users_total), 
+                                        replace=False)
+        selected_users = np.sort(selected_users)  # Sort for consistent ordering
+        
+        # Create the plot
+        fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+        
+        # Plot each selected user's opinion evolution
+        colors = plt.cm.tab10(np.linspace(0, 1, len(selected_users)))
+        for i, user_idx in enumerate(selected_users):
+            user_opinions = opinion_matrix[:, user_idx]
+            ax.plot(steps, user_opinions, 
+                   color=colors[i], 
+                   linewidth=2, 
+                   marker='o', 
+                   markersize=3,
+                   alpha=0.8,
+                   label=f'User {user_idx}')
+        
+        ax.set_xlabel('Time Step')
+        ax.set_ylabel('Opinion Value')
+        ax.set_title(f'Opinion Evolution for {len(selected_users)} Selected Users')
+        ax.grid(True, alpha=0.3)
+        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        
+        # Add some statistics
+        final_opinions = opinion_matrix[-1, selected_users]
+        initial_opinions = opinion_matrix[0, selected_users]
+        opinion_changes = final_opinions - initial_opinions
+        
+        # Add text box with statistics
+        stats_text = f"""
+        Selected Users: {selected_users.tolist()}
+        Initial Opinions: {initial_opinions}
+        Final Opinions: {final_opinions}
+        Opinion Changes: {opinion_changes}
+        Max Change: {np.max(np.abs(opinion_changes)):.4f}"""
+        
+        ax.text(0.02, 0.98, stats_text, transform=ax.transAxes, 
+               fontsize=9, verticalalignment='top', 
+               bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8),
+               fontfamily='monospace')
+        
+        plt.tight_layout()
+        plt.savefig(filename, dpi=300, bbox_inches='tight')
+        plt.close()
+        self.log.info("Plot saved as %s", filename)
