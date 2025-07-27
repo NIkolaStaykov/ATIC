@@ -1,6 +1,4 @@
 /outputs/
 /__pycache__/
-kalman.py
-kalman_example.py
 estimation_error_plot.png
 pykalman_estimation_error.png
