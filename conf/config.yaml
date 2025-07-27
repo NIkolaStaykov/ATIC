@@ -1,5 +1,5 @@
 data_generation:
-  type: pure # [pure, with_actors]
+  type: with_actors # [pure, with_actors]
   seed: 1
   debug: false
 
@@ -12,7 +12,7 @@ data_generation:
 
   controller:
     control_gain: 0.1
-    type: random # [random, adversarial, null]
+    type: adversarial # [random, adversarial, zero]
     kalman_filter:
       process_noise_var: 0.0001    # Q matrix variance
       measurement_noise_var: 0.1  # R matrix variance
