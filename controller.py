@@ -82,7 +82,7 @@ class Controller:
         self.sensitivity_estimator = SensitivityEstimator(cfg = cfg["kalman_filter"], n_users = self.num_users)
 
         self.control_input = np.zeros(self.num_users)
-        self.prev_control_input = None
+        self.prev_control_inputs = np.zeros((2, self.num_users))  # Store previous control inputs for Kalman update
         self.prev_opinion_state = None
 
         self.kalman_covariance_trace = None
@@ -95,9 +95,11 @@ class Controller:
         
     def step(self, state, step):
         # Update Kalman filter if we have previous data
-        if self.prev_control_input is not None and self.prev_opinion_state is not None:
+        if step < 10:
+            self.log.info(f"Step {step}, Opinion State: {state.opinion_state}, Control Input: {self.control_input}")
+        if step > 0:
             delta_x_ss = state.opinion_state - self.prev_opinion_state
-            delta_p = self.prev_control_input - (self.prev_prev_control_input if hasattr(self, 'prev_prev_control_input') else np.zeros(self.num_users))
+            delta_p = self.prev_control_inputs[0, :] - self.prev_control_inputs[1, :]
             # self.log.info(f"delta_x_ss: {delta_x_ss}, delta_p: {delta_p}")
             if np.linalg.norm(delta_p) > 1e-6:
                 self.sensitivity_estimator.update(delta_x_ss, delta_p)
@@ -105,23 +107,23 @@ class Controller:
                 self.kalman_covariance_trace = self.sensitivity_estimator.get_covariance_trace()
 
         # Store previous control input before generating new one
-        if hasattr(self, 'prev_control_input') and self.prev_control_input is not None and step > 10:
-            self.prev_prev_control_input = self.prev_control_input.copy()
+        if step > 10 and self.prev_opinion_state is not None:
+            self.prev_control_inputs[1, :] = self.prev_control_inputs[0, :].copy()
 
             # Generate new control input
-            control_input_unclipped = self.prev_control_input + \
-                2*self.control_gain*self.sensitivity_estimate.T @ (self.prev_opinion_state - self.sensitivity_estimate @ self.prev_control_input)
+            control_input_unclipped = self.prev_control_inputs[0, :] + \
+                2*self.control_gain*self.sensitivity_estimate.T @ (self.prev_opinion_state - self.sensitivity_estimate @ self.prev_control_inputs[0, :])
             # Clip control input to [-1, 1]
             self.control_input = control_input_unclipped / max(control_input_unclipped)
             # self.control_input = np.random.rand(self.num_users)
         else:
-            self.log.warning("No previous control input or opinion state to update Kalman filter.")
+            self.log.info("Warmup, stay cozy")
             # If no previous control input, initialize to zero
             self.control_input = np.random.rand(self.num_users)
 
 
         # Store current values for next iteration
-        self.prev_control_input = self.control_input.copy()
+        self.prev_control_inputs[0, :] = self.control_input.copy()
         self.prev_opinion_state = state.opinion_state.copy()
         
 
