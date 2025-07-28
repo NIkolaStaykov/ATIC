@@ -10,7 +10,7 @@ from controller import SensitivityEstimator
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
-DataGeneratorType = Enum('DataGeneratorType', 'PURE WITH_ACTORS')
+DataGeneratorType = Enum('DataGeneratorType', 'PURE WITH_ACTORS ONLY_BAD')
 
 
 @dataclass
@@ -78,18 +78,27 @@ class DataGenerator:
         user_influence_matrix = user_influence_matrix / user_influence_matrix.sum(axis=1, keepdims=True)
         
         if self.type == DataGeneratorType.PURE:
-            total_gamma_vec = np.zeros(n_users)
+            controller_influences = np.zeros((n_users, n_users))
+            attacker_influences = np.zeros((n_users, n_users))
         elif self.type == DataGeneratorType.WITH_ACTORS:
             # If actors are present, generate a random influence vector
             # This could be modified to include specific actor influences
             total_gamma_vec = np.random.rand(n_users)
+            controller_influences = np.diag(np.random.uniform(low=np.zeros(n_users), high=total_gamma_vec))
+            attacker_influences = np.diag(total_gamma_vec) - controller_influences
+        elif self.type == DataGeneratorType.ONLY_BAD:
+            # If only bad actors are present, generate a random influence vector
+            total_gamma_vec = np.random.rand(n_users)
+            controller_influences = np.zeros((n_users, n_users))
+            attacker_influences = np.diag(total_gamma_vec)
         else:
             raise ValueError(f"Unknown DataGeneratorType: {self.type}")
         
-        controller_influences = np.diag(np.random.uniform(low=np.zeros(n_users), high=total_gamma_vec))
-        # attacker_influences = np.diag(np.random.rand(n_users))
-        attacker_influences = np.diag(total_gamma_vec) - controller_influences
+
         
+        self.log.info("User influence matrix:\n%s", user_influence_matrix)
+        self.log.info("Controller influences:\n%s", controller_influences)
+        self.log.info("Attacker influences:\n%s", attacker_influences)
         initial_opinions = np.random.rand(n_users)
 
         return State(

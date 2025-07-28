@@ -15,7 +15,7 @@ def my_app(cfg):
     file = open("output.csv", "w", encoding="utf-8")
     file.write("step,opinion_state,control_input,attacker_input\n")
     for data in generator.generate():
-        dataset = pd.concat([pd.DataFrame([data], columns=dataset.columns), dataset], axis=0,  ignore_index=True)
+        dataset = pd.concat([dataset, pd.DataFrame([data], columns=dataset.columns)], axis=0,  ignore_index=True)
         file.write(f"{data['step']},{data['opinion_state']},{data['control_input']},{data['attacker_input']}\n")
     
     plotter = Plotter(dataset)

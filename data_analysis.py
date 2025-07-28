@@ -105,13 +105,15 @@ class Plotter:
                    marker='o', 
                    markersize=3,
                    alpha=0.8,
-                   label=f'User {user_idx}')
+                   label=f'User {user_idx}'
+                   )
         
         ax.set_xlabel('Time Step')
         ax.set_ylabel('Opinion Value')
         ax.set_title(f'Opinion Evolution for {len(selected_users)} Selected Users')
         ax.grid(True, alpha=0.3)
         ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        ax.set_ylim(-1, 1)
         
         # Add some statistics
         final_opinions = opinion_matrix[-1, selected_users]

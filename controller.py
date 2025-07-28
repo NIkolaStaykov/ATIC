@@ -4,7 +4,7 @@ import sys
 from enum import Enum
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
-ControllerType = Enum('ControllerType', 'RANDOM ADVERSARIAL ZERO')
+ControllerType = Enum('ControllerType', 'RANDOM ADVERSARIAL')
 
 class SensitivityEstimator:
     """Kalman Filter implementation"""
@@ -122,8 +122,6 @@ class Controller:
                 self.control_input = control_input_unclipped / max(control_input_unclipped)
             elif self.controller_type == ControllerType.RANDOM:
                 self.control_input = np.random.rand(self.num_users)
-            elif self.controller_type == ControllerType.ZERO:
-                self.control_input = np.zeros(self.num_users)
             else:
                 raise ValueError(f"Unknown ControllerType: {self.controller_type}")
             
