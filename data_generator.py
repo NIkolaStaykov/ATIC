@@ -94,8 +94,6 @@ class DataGenerator:
         else:
             raise ValueError(f"Unknown DataGeneratorType: {self.type}")
         
-
-        
         self.log.info("User influence matrix:\n%s", user_influence_matrix)
         self.log.info("Controller influences:\n%s", controller_influences)
         self.log.info("Attacker influences:\n%s", attacker_influences)

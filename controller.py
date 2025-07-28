@@ -111,7 +111,7 @@ class Controller:
                 self.kalman_covariance_trace = self.sensitivity_estimator.get_covariance_trace()
 
         # Store previous control input before generating new one
-        if step > 10 and self.prev_opinion_state is not None:
+        if (step % 50 != 0) and step > 20 and self.prev_opinion_state is not None:
             self.prev_control_inputs[1, :] = self.prev_control_inputs[0, :].copy()
 
             # Generate new control input
