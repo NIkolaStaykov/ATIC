@@ -1,5 +1,5 @@
 data_generation:
-  type: only_bad # [pure, with_actors, only_bad]
+  type: with_actors # [pure, with_actors, only_bad]
   seed: 1
   debug: false
 
@@ -12,7 +12,20 @@ data_generation:
 
   controller:
     control_gain: 0.1
-    type: random # [random, adversarial]
+    type: adversarial # [random, adversarial]
     kalman_filter:
       process_noise_var: 0.0001    # Q matrix variance
       measurement_noise_var: 0.1  # R matrix variance
+
+experiment_name: atic_sweep
+
+hydra:
+  mode: MULTIRUN
+  sweep:
+    dir: multirun/${experiment_name}/${data_generation.seed}_${data_generation.type}
+  run:
+    dir: .
+  sweeper:
+    params:
+      data_generation.type: pure,with_actors,only_bad
+      data_generation.seed: "range(1, 101, 1)"

@@ -3,6 +3,7 @@ import logging
 import sys
 import numpy as np
 import pandas as pd
+from hydra.core.hydra_config import HydraConfig
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
@@ -10,6 +11,7 @@ class Plotter:
     def __init__(self, data: pd.DataFrame):
         self.log = logging.getLogger(f"\033[96m[{self.__class__.__name__}]\033[0m")
         self.data = data
+        self.log_folder = HydraConfig.get().runtime.output_dir
 
     def plot_estimation_error(self, filename: str = "pykalman_estimation_error.png"):
         """Plot the estimation error and other metrics"""
@@ -65,7 +67,7 @@ class Plotter:
                 verticalalignment='top', fontfamily='monospace')
         
         plt.tight_layout()
-        plt.savefig(filename, dpi=300, bbox_inches='tight')
+        plt.savefig(self.log_folder + '\\' + filename, dpi=300, bbox_inches='tight')
         plt.close()
         self.log.info("Plot saved as %s", filename)
 
@@ -134,6 +136,6 @@ class Plotter:
                fontfamily='monospace')
         
         plt.tight_layout()
-        plt.savefig(filename, dpi=300, bbox_inches='tight')
+        plt.savefig(self.log_folder + '\\' + filename, dpi=300, bbox_inches='tight')
         plt.close()
         self.log.info("Plot saved as %s", filename)

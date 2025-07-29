@@ -3,6 +3,7 @@ import hydra
 from data_generator import DataGenerator
 from data_analysis import Plotter
 import pandas as pd
+import os
 
 @hydra.main(version_base=None, config_path="./conf", config_name="config")
 def my_app(cfg):
@@ -12,11 +13,24 @@ def my_app(cfg):
     columns = ["step", "opinion_state", "control_input", "attacker_input", "sensitivity_estimate", "kalman_covariance_trace", "estimation_error"]
     dataset = pd.DataFrame(columns=columns)
 
-    file = open("output.csv", "w", encoding="utf-8")
-    file.write("step,opinion_state,control_input,attacker_input\n")
+    # Append to existing CSV file or create a new one
+    if not os.path.exists("steady_state_opinions.csv"):
+        file = open("steady_state_opinions.csv", "w", encoding="utf-8")
+        file.write("seed,opinion_state_avg,run_mode,final_kalman_err\n")
+    else:
+        file = open("steady_state_opinions.csv", "a", encoding="utf-8")
+
     for data in generator.generate():
         dataset = pd.concat([dataset, pd.DataFrame([data], columns=dataset.columns)], axis=0,  ignore_index=True)
-        file.write(f"{data['step']},{data['opinion_state']},{data['control_input']},{data['attacker_input']}\n")
+    
+    # We assume the opinions converged on the last step
+    last_row = dataset.iloc[-1]
+    opinion_avg = last_row['opinion_state'].mean()
+    seed = cfg['data_generation']['seed']
+    run_mode = cfg['data_generation']['type']
+    final_kalman_err = last_row['estimation_error']
+    file.write(f"{seed},{opinion_avg},{run_mode},{final_kalman_err}\n")
+    file.close()
     
     plotter = Plotter(dataset)
     plotter.plot_estimation_error()
