@@ -16,17 +16,19 @@ data_generation:
     kalman_filter:
       process_noise_var: 0.0001    # Q matrix variance
       measurement_noise_var: 0.1  # R matrix variance
-      trigger_period: 10 # T trigger period
+      trigger_period: 1 # T trigger period
 
-experiment_name: atic_sweep
 
-hydra:
-  mode: MULTIRUN
-  sweep:
-    dir: multirun/${experiment_name}/${data_generation.seed}_${data_generation.type}
-  run:
-    dir: .
-  sweeper:
-    params:
-      data_generation.type: pure,with_actors,only_bad
-      data_generation.seed: "range(1, 101, 1)" 
+### Commented out for testing the trigger period parameter
+#experiment_name: atic_sweep
+#
+#hydra:
+#  mode: MULTIRUN
+#  sweep:
+#    dir: multirun/${experiment_name}/${data_generation.seed}_${data_generation.type}
+#  run:
+#    dir: .
+#  sweeper:
+#    params:
+#      data_generation.type: pure,with_actors,only_bad
+#      data_generation.seed: "range(1, 101, 1)" 

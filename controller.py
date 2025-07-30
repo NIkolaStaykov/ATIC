@@ -103,20 +103,18 @@ class Controller:
         
     def step(self, state, step):
         # Update Kalman filter if we have previous data
-        T = 1 
         if step > 0:
             delta_x_ss = state.opinion_state - self.prev_opinion_state
             delta_p = self.prev_control_inputs[0, :] - self.prev_control_inputs[1, :]
             # self.log.info(f"delta_x_ss: {delta_x_ss}, delta_p: {delta_p}")
             if np.linalg.norm(delta_p) > 1e-6:
-                if (step % T == 0):
-                    self.sensitivity_estimator.update(delta_x_ss, delta_p, step)
+                self.sensitivity_estimator.update(delta_x_ss, delta_p, step)
                 
                 self.sensitivity_estimate = self.sensitivity_estimator.get_sensitivity_matrix()
                 self.kalman_covariance_trace = self.sensitivity_estimator.get_covariance_trace()
 
         # Store previous control input before generating new one
-        if (step % 15 != 0) and step > 20 and self.prev_opinion_state is not None:
+        if (step % 10 != 0) and step > 20 and self.prev_opinion_state is not None:
             self.prev_control_inputs[1, :] = self.prev_control_inputs[0, :].copy()
 
             # Generate new control input
