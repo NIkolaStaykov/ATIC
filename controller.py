@@ -18,6 +18,7 @@ class SensitivityEstimator:
         self.F = np.eye(self.n_states)  # Transition Matrix
         self.Q = np.eye(self.n_states) * cfg["process_noise_var"]  # Process noise covariance
         self.R = np.eye(n_users) * cfg["measurement_noise_var"]    # Measurement noise covariance
+        self.T = cfg['trigger_period'] # Trigger period for Kalman Filter posterior update
         
         # Initialize filter state
         self.state_mean = np.zeros(self.n_states)
@@ -30,7 +31,7 @@ class SensitivityEstimator:
         
         self.log.info("Users: %d, Process Noise Variance: %.4f, Measurement Noise Variance: %.4f.", self.n_users, cfg["process_noise_var"], cfg["measurement_noise_var"])
     
-    def update(self, delta_x_ss: np.ndarray, delta_p: np.ndarray):
+    def update(self, delta_x_ss: np.ndarray, delta_p: np.ndarray, step):
         """Update the Kalman filter with new measurement"""
 
         # Skip if delta_p is too small
@@ -59,10 +60,11 @@ class SensitivityEstimator:
         # Innovation (measurement residual)
         innovation = delta_x_ss - H @ state_pred
         
-        # Update step
-        self.state_mean = state_pred + K @ innovation
-        self.state_covariance = (np.eye(self.n_states) - K @ H) @ covar_pred
-        
+        # Triggered posterior update every T steps
+        if (step % self.T == 0):
+            self.state_mean = state_pred + K @ innovation
+            self.state_covariance = (np.eye(self.n_states) - K @ H) @ covar_pred
+            
         # Store the current estimate
         sensitivity_matrix = self.get_sensitivity_matrix()
         self.sensitivity_estimates.append(sensitivity_matrix.copy())
@@ -101,12 +103,15 @@ class Controller:
         
     def step(self, state, step):
         # Update Kalman filter if we have previous data
+        T = 1 
         if step > 0:
             delta_x_ss = state.opinion_state - self.prev_opinion_state
             delta_p = self.prev_control_inputs[0, :] - self.prev_control_inputs[1, :]
             # self.log.info(f"delta_x_ss: {delta_x_ss}, delta_p: {delta_p}")
             if np.linalg.norm(delta_p) > 1e-6:
-                self.sensitivity_estimator.update(delta_x_ss, delta_p)
+                if (step % T == 0):
+                    self.sensitivity_estimator.update(delta_x_ss, delta_p, step)
+                
                 self.sensitivity_estimate = self.sensitivity_estimator.get_sensitivity_matrix()
                 self.kalman_covariance_trace = self.sensitivity_estimator.get_covariance_trace()
 
