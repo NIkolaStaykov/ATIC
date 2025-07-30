@@ -19,7 +19,7 @@ class SensitivityEstimator:
         self.Q = np.eye(self.n_states) * cfg["process_noise_var"]  # Process noise covariance
         self.R = np.eye(n_users) * cfg["measurement_noise_var"]    # Measurement noise covariance
         self.T = cfg['trigger_period'] # Trigger period for Kalman Filter posterior update
-        
+        self.tau = cfg['excitation_period'] # Period for Persistent Excitation of the system
         # Initialize filter state
         self.state_mean = np.zeros(self.n_states)
         self.state_covariance = np.eye(self.n_states) * 1.0
@@ -114,7 +114,7 @@ class Controller:
                 self.kalman_covariance_trace = self.sensitivity_estimator.get_covariance_trace()
 
         # Store previous control input before generating new one
-        if (step % 10 != 0) and step > 20 and self.prev_opinion_state is not None:
+        if (step % self.tau != 0) and step > 20 and self.prev_opinion_state is not None:
             self.prev_control_inputs[1, :] = self.prev_control_inputs[0, :].copy()
 
             # Generate new control input
