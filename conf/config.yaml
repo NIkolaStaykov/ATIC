@@ -29,4 +29,4 @@ hydra:
   sweeper:
     params:
       data_generation.type: pure,with_actors,only_bad
-      data_generation.seed: "range(1, 2, 1)" # was 101
+      data_generation.seed: "range(1, 101, 1)" 
