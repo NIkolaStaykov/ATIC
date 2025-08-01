@@ -106,6 +106,9 @@ class DataGenerator:
         else:
             raise ValueError(f"Unknown DataGeneratorType: {self.type}")
         
+        # controller_influences = np.eye(n_users) * 0.06
+        # attacker_influences = np.eye(n_users) * 0.05
+        
         # self.log.info("User influence matrix:\n%s", user_influence_matrix)
         # self.log.info("Controller influences:\n%s", controller_influences)
         # self.log.info("Attacker influences:\n%s", attacker_influences)
@@ -162,6 +165,9 @@ class DataGenerator:
                 # Define placeholder estimation_error
                 true_sensitivity = self.state.get_true_sensitivity_matrix()
                 estimation_error = 0
+                
+                # pass opinions to controller as target
+                self.controller.target_opinion_states = self.state.opinion_state.copy()
             
             if (step >= self.T_pure and step < self.T_only_bad + self.T_pure):   
                 stage = DataGeneratorType.ONLY_BAD
@@ -198,9 +204,7 @@ class DataGenerator:
                 self.log.debug("True sensitivity:\n%s", np.array2string(true_sensitivity, formatter={'float_kind':'{:0.2f}'.format}))
                 self.log.debug("Frobenius norm of estimation error: %.6f", estimation_error)
                 self.log.debug("Covariance trace (uncertainty): %.6f", self.controller.kalman_covariance_trace)
-                self.log.debug("-" * 60)
-            
-
+                self.log.debug("-" * 60)                
 
             yield {
                 'step': step,

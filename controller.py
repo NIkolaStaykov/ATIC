@@ -89,8 +89,8 @@ class Controller:
 
         self.num_users = num_users
         self.state_history_length = cfg["state_history_length"]
-        self.warmup = False
-        self.warmup_len = 20
+        self.warmup = True
+        self.warmup_len = 100
         self.control_gain = cfg["control_gain"]
         self.sensitivity_estimator = SensitivityEstimator(cfg = cfg["kalman_filter"], n_users = self.num_users)
 
@@ -103,6 +103,8 @@ class Controller:
         self.sensitivity_estimate = np.zeros([self.num_users, self.num_users])
 
         self.log.info("Users: %d, control gain=%f.", self.num_users, self.control_gain)
+        
+        self.target_opinion_states = np.zeros(self.num_users)  # Target opinion states for the controller
     
     def get_input(self):
         return self.control_input
@@ -137,22 +139,27 @@ class Controller:
         if self.warmup:
             self.log.info("Warmup, stay cozy")
             # If no previous control input, initialize to zero
-            self.control_input = np.random.uniform(low=-1.0, high=1.0, size=self.num_users)
+            self.control_input = np.random.uniform(low=-0.1, high=0.1, size=self.num_users)
             if step == self.warmup_len: self.warmup = False
 
-        elif self.time_for_random_step(step):
+        elif self.time_for_random_step(step) and step > self.warmup_len:
             self.control_input = np.random.uniform(low=-1.0, high=1.0, size=self.num_users)
 
         elif self.is_converged():
             # print("Step %d: Opinions have converged, generating new controller input." % step)
             # Generate new control input
             if self.controller_type == ControllerType.ADVERSARIAL:
-                
-                # control_input_unclipped = self.prev_control_inputs[0, :] + \
-                #     2*self.control_gain*self.sensitivity_estimate.T @ (self.prev_opinion_state - self.sensitivity_estimate @ self.prev_control_inputs[0, :])
-                true_M_matrix = state.get_true_sensitivity_matrix()
-                control_input_unclipped = self.prev_control_inputs[0, :] + \
-                    2*self.control_gain*true_M_matrix.T @ (self.prev_opinion_states[0] - true_M_matrix @ self.prev_control_inputs[0, :])
+                                
+                M_matrix = state.get_true_sensitivity_matrix()
+                # M_matrix = self.sensitivity_estimate
+                    
+                # (dx_i / dp_i)(x_i - x^T_i)   %%% (dx_i / dp_i) = M_ii
+                # gain * (dx_i / dp_i)(x_i - x^T_i)
+                # M_diag = diag(diag(M))
+
+                diagonal_M = np.diag(np.diag(M_matrix))
+                control_input_unclipped = self.prev_control_inputs[0, :] - \
+                    self.control_gain * diagonal_M @ (self.prev_opinion_states[0] - self.target_opinion_states)
                     
                 # Clip control input to [-1, 1]
                 # self.control_input = control_input_unclipped / max(control_input_unclipped)
@@ -163,7 +170,6 @@ class Controller:
                 raise ValueError(f"Unknown ControllerType: {self.controller_type}")
             
             self.last_non_random_control_input = self.control_input.copy()
-            print("Step %d: New control input generated: %s" % (step, self.control_input))
         else:
             self.control_input = self.last_non_random_control_input.copy()
 
