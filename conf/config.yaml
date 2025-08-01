@@ -1,19 +1,20 @@
 data_generation:
   type: with_actors # [pure, with_actors, only_bad]
-  seed: 1
+  seed: 2
   debug: false
-  T_pure: 200
-  T_only_bad: 500
+  T_pure: 50
+  T_only_bad: 100
 
   network:
     num_users: 4
-    num_steps: 1500
+    num_steps: 600
 
   adversary:
     gamma: 0.0
 
   controller:
     control_gain: 0.1
+    state_history_length: 20
     type: adversarial # [random, adversarial]
     kalman_filter:
       process_noise_var: 0.0001    # Q matrix variance

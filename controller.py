@@ -1,4 +1,6 @@
 import numpy as np
+import collections
+from statistics import mean
 import logging
 import sys
 from enum import Enum
@@ -86,12 +88,16 @@ class Controller:
         self.log.info("Controller type: %s", self.controller_type.name)
 
         self.num_users = num_users
+        self.state_history_length = cfg["state_history_length"]
+        self.warmup = False
+        self.warmup_len = 20
         self.control_gain = cfg["control_gain"]
         self.sensitivity_estimator = SensitivityEstimator(cfg = cfg["kalman_filter"], n_users = self.num_users)
 
         self.control_input = np.zeros(self.num_users)
         self.prev_control_inputs = np.zeros((2, self.num_users))  # Store previous control inputs for Kalman update
-        self.prev_opinion_state = None
+        self.last_non_random_control_input = np.zeros(self.num_users)
+        self.prev_opinion_states = np.zeros((self.state_history_length, self.num_users))  # Initialize with zeros
 
         self.kalman_covariance_trace = None
         self.sensitivity_estimate = np.zeros([self.num_users, self.num_users])
@@ -100,11 +106,26 @@ class Controller:
     
     def get_input(self):
         return self.control_input
+    
+    def is_converged(self):
+        """Check if the opinions have settled"""
+        if len(self.prev_opinion_states) < self.state_history_length:
+            return False
+        
+        # Check if the moving average settled
+        moving_avg_old = np.mean(self.prev_opinion_states[1:, :], axis=0)
+        moving_avg_new = np.mean(self.prev_opinion_states[:-1, :], axis=0)
+        return np.all(np.abs(moving_avg_old - moving_avg_new) < 1e+4)
+    
+    def time_for_random_step(self, step):
+        """Check if it's time for a random step"""
+        return (step % self.sensitivity_estimator.num_steps_between_random == 0)
+
         
     def step(self, state, step):
         # Update Kalman filter if we have previous data
         if step > 0:
-            delta_x_ss = state.opinion_state - self.prev_opinion_state
+            delta_x_ss = state.opinion_state - self.prev_opinion_states[-1]
             delta_p = self.prev_control_inputs[0, :] - self.prev_control_inputs[1, :]
             # self.log.info(f"delta_x_ss: {delta_x_ss}, delta_p: {delta_p}")
             if np.linalg.norm(delta_p) > 1e-6:
@@ -113,14 +134,26 @@ class Controller:
                 self.sensitivity_estimate = self.sensitivity_estimator.get_sensitivity_matrix()
                 self.kalman_covariance_trace = self.sensitivity_estimator.get_covariance_trace()
 
-        # Store previous control input before generating new one
-        if (step % self.sensitivity_estimator.num_steps_between_random != 0) and step > 20 and self.prev_opinion_state is not None:
-            self.prev_control_inputs[1, :] = self.prev_control_inputs[0, :].copy()
+        if self.warmup:
+            self.log.info("Warmup, stay cozy")
+            # If no previous control input, initialize to zero
+            self.control_input = np.random.uniform(low=-1.0, high=1.0, size=self.num_users)
+            if step == self.warmup_len: self.warmup = False
 
+        elif self.time_for_random_step(step):
+            self.control_input = np.random.uniform(low=-1.0, high=1.0, size=self.num_users)
+
+        elif self.is_converged():
+            # print("Step %d: Opinions have converged, generating new controller input." % step)
             # Generate new control input
             if self.controller_type == ControllerType.ADVERSARIAL:
+                
+                # control_input_unclipped = self.prev_control_inputs[0, :] + \
+                #     2*self.control_gain*self.sensitivity_estimate.T @ (self.prev_opinion_state - self.sensitivity_estimate @ self.prev_control_inputs[0, :])
+                true_M_matrix = state.get_true_sensitivity_matrix()
                 control_input_unclipped = self.prev_control_inputs[0, :] + \
-                    2*self.control_gain*self.sensitivity_estimate.T @ (self.prev_opinion_state - self.sensitivity_estimate @ self.prev_control_inputs[0, :])
+                    2*self.control_gain*true_M_matrix.T @ (self.prev_opinion_states[0] - true_M_matrix @ self.prev_control_inputs[0, :])
+                    
                 # Clip control input to [-1, 1]
                 # self.control_input = control_input_unclipped / max(control_input_unclipped)
                 self.control_input = np.clip(control_input_unclipped, -1.0, 1.0)
@@ -129,14 +162,17 @@ class Controller:
             else:
                 raise ValueError(f"Unknown ControllerType: {self.controller_type}")
             
+            self.last_non_random_control_input = self.control_input.copy()
+            print("Step %d: New control input generated: %s" % (step, self.control_input))
         else:
-            self.log.debug("Warmup, stay cozy")
-            # If no previous control input, initialize to zero
-            self.control_input = np.random.uniform(low=-1.0, high=1.0, size=self.num_users)
+            self.control_input = self.last_non_random_control_input.copy()
 
 
+        # Store previous control input before generating new one
         # Store current values for next iteration
+        self.prev_control_inputs[1, :] = self.prev_control_inputs[0, :].copy()
         self.prev_control_inputs[0, :] = self.control_input.copy()
-        self.prev_opinion_state = state.opinion_state.copy()
+        self.prev_opinion_states = np.roll(self.prev_opinion_states, 1, axis=0)
+        self.prev_opinion_states[0, :] = state.opinion_state.copy()
         
 
