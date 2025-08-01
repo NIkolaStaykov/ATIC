@@ -3,15 +3,14 @@ data_generation:
   seed: 1
   debug: false
   T_pure: 200
-  T_only_bad: 200
-  T_with_actors: 200
+  T_only_bad: 500
 
   network:
     num_users: 4
-    num_steps: 3000
+    num_steps: 1500
 
   adversary:
-    gamma: 0.2
+    gamma: 0.0
 
   controller:
     control_gain: 0.1
@@ -20,7 +19,7 @@ data_generation:
       process_noise_var: 0.0001    # Q matrix variance
       measurement_noise_var: 0.1  # R matrix variance
       trigger_period: 5 # T trigger period
-      excitation_period: 10 # tau excitation period
+      num_steps_between_random: 5000 # tau excitation period
 
 
 ### Commented out for testing the trigger period parameter

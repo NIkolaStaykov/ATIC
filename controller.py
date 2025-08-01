@@ -19,7 +19,7 @@ class SensitivityEstimator:
         self.Q = np.eye(self.n_states) * cfg["process_noise_var"]  # Process noise covariance
         self.R = np.eye(n_users) * cfg["measurement_noise_var"]    # Measurement noise covariance
         self.T = cfg['trigger_period'] # Trigger period for Kalman Filter posterior update
-        self.tau = cfg['excitation_period'] # Period for Persistent Excitation of the system
+        self.num_steps_between_random = cfg['num_steps_between_random'] # Period for Persistent Excitation of the system
         # Initialize filter state
         self.state_mean = np.zeros(self.n_states)
         self.state_covariance = np.eye(self.n_states) * 1.0
@@ -114,7 +114,7 @@ class Controller:
                 self.kalman_covariance_trace = self.sensitivity_estimator.get_covariance_trace()
 
         # Store previous control input before generating new one
-        if (step % self.sensitivity_estimator.tau != 0) and step > 20 and self.prev_opinion_state is not None:
+        if (step % self.sensitivity_estimator.num_steps_between_random != 0) and step > 20 and self.prev_opinion_state is not None:
             self.prev_control_inputs[1, :] = self.prev_control_inputs[0, :].copy()
 
             # Generate new control input
@@ -122,7 +122,8 @@ class Controller:
                 control_input_unclipped = self.prev_control_inputs[0, :] + \
                     2*self.control_gain*self.sensitivity_estimate.T @ (self.prev_opinion_state - self.sensitivity_estimate @ self.prev_control_inputs[0, :])
                 # Clip control input to [-1, 1]
-                self.control_input = control_input_unclipped / max(control_input_unclipped)
+                # self.control_input = control_input_unclipped / max(control_input_unclipped)
+                self.control_input = np.clip(control_input_unclipped, -1.0, 1.0)
             elif self.controller_type == ControllerType.RANDOM:
                 self.control_input = np.random.uniform(low=-1.0, high=1.0, size=self.num_users)
             else:

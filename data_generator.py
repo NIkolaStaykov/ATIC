@@ -69,7 +69,6 @@ class DataGenerator:
         # Get time durations of each phase
         self.T_pure = config['T_pure'] # Duration of pure phase
         self.T_only_bad = config['T_only_bad'] # Duration of phase with adversary
-        self.T_with_actors = config['T_with_actors'] # Duration of phase with controller
         
         # initialize adversarial agent
         self.adversary = AdversarialAgent(
