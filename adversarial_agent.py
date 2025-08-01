@@ -14,7 +14,7 @@ class AdversarialAgent:
     def get_input(self, random=False):
         """Generate custom adversarial input"""
         if random:
-            return np.random.rand(self.num_users)
+            return np.random.uniform(low=-1.0, high=1.0, size=self.num_users)
         else:
             noise = np.random.uniform(low=0.0, high=self.gamma, size=(self.num_users, 1))
             attacker_input = (np.ones((self.num_users, 1)) - np.ones((self.num_users, 1)) * self.gamma) + noise

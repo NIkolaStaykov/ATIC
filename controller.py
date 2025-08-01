@@ -114,7 +114,7 @@ class Controller:
                 self.kalman_covariance_trace = self.sensitivity_estimator.get_covariance_trace()
 
         # Store previous control input before generating new one
-        if (step % self.tau != 0) and step > 20 and self.prev_opinion_state is not None:
+        if (step % self.sensitivity_estimator.tau != 0) and step > 20 and self.prev_opinion_state is not None:
             self.prev_control_inputs[1, :] = self.prev_control_inputs[0, :].copy()
 
             # Generate new control input
@@ -124,14 +124,14 @@ class Controller:
                 # Clip control input to [-1, 1]
                 self.control_input = control_input_unclipped / max(control_input_unclipped)
             elif self.controller_type == ControllerType.RANDOM:
-                self.control_input = np.random.rand(self.num_users)
+                self.control_input = np.random.uniform(low=-1.0, high=1.0, size=self.num_users)
             else:
                 raise ValueError(f"Unknown ControllerType: {self.controller_type}")
             
         else:
             self.log.debug("Warmup, stay cozy")
             # If no previous control input, initialize to zero
-            self.control_input = np.random.rand(self.num_users)
+            self.control_input = np.random.uniform(low=-1.0, high=1.0, size=self.num_users)
 
 
         # Store current values for next iteration

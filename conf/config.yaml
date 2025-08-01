@@ -2,6 +2,9 @@ data_generation:
   type: with_actors # [pure, with_actors, only_bad]
   seed: 1
   debug: false
+  T_pure: 200
+  T_only_bad: 200
+  T_with_actors: 200
 
   network:
     num_users: 4
