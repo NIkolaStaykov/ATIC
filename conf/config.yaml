@@ -1,41 +1,42 @@
 data_generation:
   log_level: info # [error, info, debug]
   type: with_actors # [pure, with_actors, only_bad]
-  seed: 2
+  seed: 5
   T_pure: 50
-  T_only_bad: 50
-  influence_ratio_bad_good: 0.2
+  T_only_bad: 150
+  influence_ratio_bad_good: 0.1
 
   network:
     num_users: 4
-    num_steps: 600
+    num_steps: 2000
 
   adversary:
-    gamma: 0.1
+    gamma: 0.2
 
   controller:
     log_level: info # [error, info, debug]
-    control_gain: 0.05
+    control_gain: 0.2
     state_history_length: 20
-    warmup_len: 20
+    warmup_len: 900
     type: adversarial # [random, adversarial]
     kalman_filter:
       process_noise_var: 0.0001    # Q matrix variance
-      measurement_noise_var: 0.1  # R matrix variance
+      measurement_noise_var: 0.005  # R matrix variance
       trigger_period: 5 # T trigger period
       num_steps_between_random: 5000 # tau excitation period
 
 
 ## Commented out for testing the trigger period parameter
-experiment_name: atic_sweep
+# experiment_name: atic_sweep
 
-hydra:
- mode: MULTIRUN
- sweep:
-   dir: multirun/${experiment_name}/${data_generation.seed}/${data_generation.influence_ratio_bad_good}
- run:
-   dir: .
- sweeper:
-   params:
-     data_generation.influence_ratio_bad_good: "range(0.1, 1, 0.1)"
-     data_generation.seed: "range(1, 10, 1)" 
+# hydra:
+#  mode: MULTIRUN
+#  sweep:
+#    dir: multirun/${experiment_name}/${data_generation.seed}/${data_generation.influence_ratio_bad_good}
+#  run:
+#    dir: .
+#  sweeper:
+#    params:
+#     #  data_generation.influence_ratio_bad_good: "range(0.05, 1.0, 0.05)"
+#      data_generation.influence_ratio_bad_good: "10.0"
+#      data_generation.seed: "range(1, 11, 1)" 

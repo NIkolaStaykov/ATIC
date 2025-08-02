@@ -20,7 +20,7 @@ def my_app(cfg):
     filename = "final_steady_state_opinions.csv"
     if not os.path.exists(filename):
         file = open(filename, "w", encoding="utf-8")
-        file.write("seed,opinion_state_avg,opinion_state_var,steady_state,final_kalman_err\n")
+        file.write("ratio,seed,opinion_state_avg,opinion_state_var,steady_state,final_kalman_err\n")
     else:
         file = open(filename, "a", encoding="utf-8")
 
@@ -31,12 +31,13 @@ def my_app(cfg):
     
     # We assume the opinions converged on the last step
     last_row = dataset.iloc[-1]
+    ratio = cfg['data_generation']['influence_ratio_bad_good']
     opinion_avg = last_row['opinion_state'].mean()
     opinion_var = last_row['opinion_state'].var()
     seed = cfg['data_generation']['seed']
     final_kalman_err = last_row['estimation_error']
     steady_state = key_data_stats.get("steady_state", np.zeros(cfg['data_generation']['network']['num_users'])).mean()
-    file.write(f"{seed},{opinion_avg},{opinion_var},{steady_state},{final_kalman_err}\n")
+    file.write(f"{ratio},{seed},{opinion_avg},{opinion_var},{steady_state},{final_kalman_err}\n")
     file.close()
 
     # Plotting

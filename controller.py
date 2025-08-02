@@ -168,7 +168,7 @@ class Controller:
                 # gain * (dx_i / dp_i)(x_i - x^T_i)
                 # M_diag = diag(diag(M))
 
-                diagonal_M = np.diag(np.diag(M_matrix))
+                diagonal_M = np.diag(np.diag(M_matrix))                
                 control_input_unclipped = self.prev_control_inputs[0, :] - \
                     self.control_gain * diagonal_M @ (self.prev_opinion_states[0] - self._target_opinion_states)
                     

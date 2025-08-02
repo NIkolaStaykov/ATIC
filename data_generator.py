@@ -103,6 +103,7 @@ class DataGenerator:
             controller_influences = np.diag(total_gamma_vec * good_multiplier)
             attacker_influences = np.diag(total_gamma_vec * bad_multiplier)
 
+            self.log.info("User influence matrix:\n%s", user_influence_matrix)
             self.log.info("Controller influences:\n%s", controller_influences)
             self.log.info("Attacker influences:\n%s", attacker_influences)
 

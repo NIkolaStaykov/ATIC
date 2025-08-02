@@ -96,7 +96,8 @@ class Plotter:
         selected_users = np.sort(selected_users)  # Sort for consistent ordering
         
         # Create the plot
-        fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+        # fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+        fig, ax = plt.subplots(1, 1, figsize=(8, 5))
 
         # Plot a dashed line for the steady state we are trying to keep
         steady_state = self.key_stats.get("steady_state", np.zeros(n_users_total))
@@ -115,11 +116,12 @@ class Plotter:
                    label=f'User {user_idx}'
                    )
         
-        ax.set_xlabel('Time Step')
-        ax.set_ylabel('Opinion Value')
-        ax.set_title(f'Opinion Evolution for {len(selected_users)} Selected Users')
+        ax.set_xlabel('Time Step', fontsize=20)
+        ax.set_ylabel('Opinion Value', fontsize=20)
+        # ax.set_title(f'Opinion Evolution for {len(selected_users)} Selected Users')
         ax.grid(True, alpha=0.3)
-        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        # ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        ax.legend(fontsize=14)
         ax.set_ylim(-1, 1)
         
         # Add some statistics
@@ -128,17 +130,19 @@ class Plotter:
         opinion_changes = final_opinions - initial_opinions
         
         # Add text box with statistics
-        stats_text = f"""
-        Selected Users: {selected_users.tolist()}
-        Initial Opinions: {initial_opinions}
-        Final Opinions: {final_opinions}
-        Opinion Changes: {opinion_changes}
-        Max Change: {np.max(np.abs(opinion_changes)):.4f}"""
+        # stats_text = f"""
+        # Selected Users: {selected_users.tolist()}
+        # Initial Opinions: {initial_opinions}
+        # Final Opinions: {final_opinions}
+        # Opinion Changes: {opinion_changes}
+        # Max Change: {np.max(np.abs(opinion_changes)):.4f}"""
         
-        ax.text(0.02, 0.98, stats_text, transform=ax.transAxes, 
-               fontsize=9, verticalalignment='top', 
-               bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8),
-               fontfamily='monospace')
+        # ax.text(0.02, 0.98, stats_text, transform=ax.transAxes, 
+        #        fontsize=9, verticalalignment='top', 
+        #        bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8),
+        #        fontfamily='monospace')
+
+        filename = filename.replace(".png", ".pdf")
         
         plt.tight_layout()
         plt.savefig(self.log_folder + '\\' + filename, dpi=300, bbox_inches='tight')
