@@ -12,13 +12,16 @@ def my_app(cfg):
     generator = DataGenerator(cfg['data_generation'])
     columns = ["step", "opinion_state", "control_input", "attacker_input", "sensitivity_estimate", "kalman_covariance_trace", "estimation_error"]
     dataset = pd.DataFrame(columns=columns)
+    # In this dict we can intermediate results from the generator to avoid recalculating them
+    data_stats = {}
 
     # Append to existing CSV file or create a new one
-    if not os.path.exists("steady_state_opinions.csv"):
-        file = open("steady_state_opinions.csv", "w", encoding="utf-8")
+    filename = "final_steady_state_opinions.csv"
+    if not os.path.exists(filename):
+        file = open(filename, "w", encoding="utf-8")
         file.write("seed,opinion_state_avg,run_mode,final_kalman_err\n")
     else:
-        file = open("steady_state_opinions.csv", "a", encoding="utf-8")
+        file = open(filename, "a", encoding="utf-8")
 
     for data in generator.generate():
         dataset = pd.concat([dataset, pd.DataFrame([data], columns=dataset.columns)], axis=0,  ignore_index=True)
@@ -31,8 +34,9 @@ def my_app(cfg):
     final_kalman_err = last_row['estimation_error']
     file.write(f"{seed},{opinion_avg},{run_mode},{final_kalman_err}\n")
     file.close()
-    
-    plotter = Plotter(dataset)
+
+    # Plotting
+    plotter = Plotter(dataset, data_stats)
     plotter.plot_estimation_error()
     plotter.plot_opinion_evolution()
 

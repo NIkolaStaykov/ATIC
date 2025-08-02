@@ -8,8 +8,8 @@ from hydra.core.hydra_config import HydraConfig
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 class Plotter:
-    def __init__(self, data: pd.DataFrame):
-        self.log = logging.getLogger(f"\033[96m[{self.__class__.__name__}]\033[0m")
+    def __init__(self, data: pd.DataFrame, key_stats: dict):
+        self.log = logging.getLogger(f"\033[96m{self.__class__.__name__}\033[0m")
         self.data = data
         self.log_folder = HydraConfig.get().runtime.output_dir
 

@@ -83,6 +83,7 @@ class Controller:
     # NOTE: There is deffinitely a better way to pass repeating values with hydra
     def __init__(self, cfg, num_users):
         self.log = logging.getLogger(f"\033[96m{self.__class__.__name__}\033[0m")
+        self.log.setLevel(cfg["log_level"].upper())
 
         self.controller_type: ControllerType = ControllerType[cfg["type"].upper()]
         self.log.info("Controller type: %s", self.controller_type.name)
@@ -90,7 +91,7 @@ class Controller:
         self.num_users = num_users
         self.state_history_length = cfg["state_history_length"]
         self.warmup = True
-        self.warmup_len = 100
+        self.warmup_len = cfg["warmup_len"]
         self.control_gain = cfg["control_gain"]
         self.sensitivity_estimator = SensitivityEstimator(cfg = cfg["kalman_filter"], n_users = self.num_users)
 
@@ -104,7 +105,17 @@ class Controller:
 
         self.log.info("Users: %d, control gain=%f.", self.num_users, self.control_gain)
         
-        self.target_opinion_states = np.zeros(self.num_users)  # Target opinion states for the controller
+        self._target_opinion_states = np.zeros(self.num_users)  # Target opinion states for the controller
+
+    @property
+    def target_opinion_states(self):
+        return self._target_opinion_states
+    
+    @target_opinion_states.setter
+    def target_opinion_states(self, value):
+        if len(value) != self.num_users:
+            raise ValueError(f"Target opinion states must have length {self.num_users}, got {len(value)}")
+        self._target_opinion_states = value
     
     def get_input(self):
         return self.control_input
@@ -137,7 +148,7 @@ class Controller:
                 self.kalman_covariance_trace = self.sensitivity_estimator.get_covariance_trace()
 
         if self.warmup:
-            self.log.info("Warmup, stay cozy")
+            self.log.debug("Warmup, stay cozy")
             # If no previous control input, initialize to zero
             self.control_input = np.random.uniform(low=-0.1, high=0.1, size=self.num_users)
             if step == self.warmup_len: self.warmup = False
@@ -159,7 +170,7 @@ class Controller:
 
                 diagonal_M = np.diag(np.diag(M_matrix))
                 control_input_unclipped = self.prev_control_inputs[0, :] - \
-                    self.control_gain * diagonal_M @ (self.prev_opinion_states[0] - self.target_opinion_states)
+                    self.control_gain * diagonal_M @ (self.prev_opinion_states[0] - self._target_opinion_states)
                     
                 # Clip control input to [-1, 1]
                 # self.control_input = control_input_unclipped / max(control_input_unclipped)

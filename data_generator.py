@@ -55,9 +55,8 @@ class DataGenerator:
     def __init__(self, config):
         np.random.seed(config['seed'])
         self.type = DataGeneratorType[config['type'].upper()]
-        self.debug = config['debug']
         self.log = logging.getLogger(f"\033[96m{self.__class__.__name__}\033[0m")
-        if self.debug: self.log.setLevel(level = logging.DEBUG)
+        self.log.setLevel(config['log_level'].upper())
 
         # self.log.info("DataGenerator type: %s, Debug mode: %s.", self.type.name, self.debug)
         # initialize network
@@ -95,9 +94,20 @@ class DataGenerator:
         elif self.type == DataGeneratorType.WITH_ACTORS:
             # If actors are present, generate a random influence vector
             # This could be modified to include specific actor influences
+            influence_ratio = config['influence_ratio_bad_good']
             total_gamma_vec = np.random.rand(n_users)
-            controller_influences = np.diag(np.random.uniform(low=np.zeros(n_users), high=total_gamma_vec))
-            attacker_influences = np.diag(total_gamma_vec) - controller_influences
+            good_multiplier = 1 / (1 + influence_ratio)  # Scale to ensure total influence is 1
+            bad_multiplier = influence_ratio / (1 + influence_ratio)
+            controller_influences = np.diag(total_gamma_vec * good_multiplier)
+            attacker_influences = np.diag(total_gamma_vec * bad_multiplier)
+
+            self.log.info("Controller influences:\n%s", controller_influences)
+            self.log.info("Attacker influences:\n%s", attacker_influences)
+
+            # NOTE: See if this can be recycled
+            # controller_influences = np.diag(np.random.uniform(low=np.zeros(n_users), high=total_gamma_vec))
+            # attacker_influences = np.diag(total_gamma_vec) - controller_influences
+
         elif self.type == DataGeneratorType.ONLY_BAD:
             # If only bad actors are present, generate a random influence vector
             total_gamma_vec = np.random.rand(n_users)

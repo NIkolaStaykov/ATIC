@@ -1,20 +1,23 @@
 data_generation:
+  log_level: info # [error, info, debug]
   type: with_actors # [pure, with_actors, only_bad]
   seed: 2
-  debug: false
   T_pure: 50
   T_only_bad: 100
+  influence_ratio_bad_good: 0.5
 
   network:
     num_users: 4
     num_steps: 600
 
   adversary:
-    gamma: 0.0
+    gamma: 0.1
 
   controller:
-    control_gain: 0.1
+    log_level: info # [error, info, debug]
+    control_gain: 0.05
     state_history_length: 20
+    warmup_len: 100
     type: adversarial # [random, adversarial]
     kalman_filter:
       process_noise_var: 0.0001    # Q matrix variance
