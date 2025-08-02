@@ -161,8 +161,8 @@ class Controller:
             # Generate new control input
             if self.controller_type == ControllerType.ADVERSARIAL:
                                 
-                M_matrix = state.get_true_sensitivity_matrix()
-                # M_matrix = self.sensitivity_estimate
+                # M_matrix = state.get_true_sensitivity_matrix()
+                M_matrix = self.sensitivity_estimate
                     
                 # (dx_i / dp_i)(x_i - x^T_i)   %%% (dx_i / dp_i) = M_ii
                 # gain * (dx_i / dp_i)(x_i - x^T_i)

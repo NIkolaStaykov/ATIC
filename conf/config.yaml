@@ -26,16 +26,16 @@ data_generation:
       num_steps_between_random: 5000 # tau excitation period
 
 
-### Commented out for testing the trigger period parameter
-#experiment_name: atic_sweep
-#
-#hydra:
-#  mode: MULTIRUN
-#  sweep:
-#    dir: multirun/${experiment_name}/${data_generation.seed}_${data_generation.type}
-#  run:
-#    dir: .
-#  sweeper:
-#    params:
-#      data_generation.type: pure,with_actors,only_bad
-#      data_generation.seed: "range(1, 101, 1)" 
+## Commented out for testing the trigger period parameter
+experiment_name: atic_sweep
+
+hydra:
+ mode: MULTIRUN
+ sweep:
+   dir: multirun/${experiment_name}/${data_generation.seed}/${data_generation.influence_ratio_bad_good}
+ run:
+   dir: .
+ sweeper:
+   params:
+     data_generation.influence_ratio_bad_good: "range(0.1, 1, 0.1)"
+     data_generation.seed: "range(1, 10, 1)" 

@@ -20,7 +20,7 @@ def my_app(cfg):
     filename = "final_steady_state_opinions.csv"
     if not os.path.exists(filename):
         file = open(filename, "w", encoding="utf-8")
-        file.write("seed,opinion_state_avg,opinion_state_var,run_mode,steady_state,final_kalman_err\n")
+        file.write("seed,opinion_state_avg,opinion_state_var,steady_state,final_kalman_err\n")
     else:
         file = open(filename, "a", encoding="utf-8")
 
@@ -34,10 +34,9 @@ def my_app(cfg):
     opinion_avg = last_row['opinion_state'].mean()
     opinion_var = last_row['opinion_state'].var()
     seed = cfg['data_generation']['seed']
-    run_mode = cfg['data_generation']['type']
     final_kalman_err = last_row['estimation_error']
-    steady_state = key_data_stats.get("steady_state", np.zeros(cfg['data_generation']['num_users'])).mean()
-    file.write(f"{seed},{opinion_avg},{opinion_var},{run_mode},{steady_state},{final_kalman_err}\n")
+    steady_state = key_data_stats.get("steady_state", np.zeros(cfg['data_generation']['network']['num_users'])).mean()
+    file.write(f"{seed},{opinion_avg},{opinion_var},{steady_state},{final_kalman_err}\n")
     file.close()
 
     # Plotting
