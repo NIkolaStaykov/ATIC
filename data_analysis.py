@@ -11,6 +11,7 @@ class Plotter:
     def __init__(self, data: pd.DataFrame, key_stats: dict):
         self.log = logging.getLogger(f"\033[96m{self.__class__.__name__}\033[0m")
         self.data = data
+        self.key_stats = key_stats
         self.log_folder = HydraConfig.get().runtime.output_dir
 
     def plot_estimation_error(self, filename: str = "pykalman_estimation_error.png"):
@@ -96,6 +97,10 @@ class Plotter:
         
         # Create the plot
         fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+
+        # Plot a dashed line for the steady state we are trying to keep
+        steady_state = self.key_stats.get("steady_state", np.zeros(n_users_total))
+        ax.axhline(y=steady_state.mean(), color='gray', linestyle='--', label='Steady State', alpha=0.7)
         
         # Plot each selected user's opinion evolution
         colors = plt.cm.tab10(np.linspace(0, 1, len(selected_users)))

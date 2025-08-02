@@ -95,7 +95,7 @@ class Controller:
         self.control_gain = cfg["control_gain"]
         self.sensitivity_estimator = SensitivityEstimator(cfg = cfg["kalman_filter"], n_users = self.num_users)
 
-        self.control_input = np.zeros(self.num_users)
+        self.control_input: np.ndarray = np.zeros(self.num_users)
         self.prev_control_inputs = np.zeros((2, self.num_users))  # Store previous control inputs for Kalman update
         self.last_non_random_control_input = np.zeros(self.num_users)
         self.prev_opinion_states = np.zeros((self.state_history_length, self.num_users))  # Initialize with zeros
@@ -117,7 +117,7 @@ class Controller:
             raise ValueError(f"Target opinion states must have length {self.num_users}, got {len(value)}")
         self._target_opinion_states = value
     
-    def get_input(self):
+    def get_input(self) -> np.ndarray:
         return self.control_input
     
     def is_converged(self):
@@ -150,11 +150,11 @@ class Controller:
         if self.warmup:
             self.log.debug("Warmup, stay cozy")
             # If no previous control input, initialize to zero
-            self.control_input = np.random.uniform(low=-0.1, high=0.1, size=self.num_users)
+            self.control_input = np.array(np.random.uniform(low=-0.1, high=0.1, size=self.num_users))
             if step == self.warmup_len: self.warmup = False
 
         elif self.time_for_random_step(step) and step > self.warmup_len:
-            self.control_input = np.random.uniform(low=-1.0, high=1.0, size=self.num_users)
+            self.control_input = np.array(np.random.uniform(low=-1.0, high=1.0, size=self.num_users))
 
         elif self.is_converged():
             # print("Step %d: Opinions have converged, generating new controller input." % step)
@@ -176,7 +176,7 @@ class Controller:
                 # self.control_input = control_input_unclipped / max(control_input_unclipped)
                 self.control_input = np.clip(control_input_unclipped, -1.0, 1.0)
             elif self.controller_type == ControllerType.RANDOM:
-                self.control_input = np.random.uniform(low=-1.0, high=1.0, size=self.num_users)
+                self.control_input = np.array(np.random.uniform(low=-1.0, high=1.0, size=self.num_users))
             else:
                 raise ValueError(f"Unknown ControllerType: {self.controller_type}")
             

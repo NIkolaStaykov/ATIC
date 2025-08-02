@@ -13,7 +13,7 @@ def my_app(cfg):
     columns = ["step", "opinion_state", "control_input", "attacker_input", "sensitivity_estimate", "kalman_covariance_trace", "estimation_error"]
     dataset = pd.DataFrame(columns=columns)
     # In this dict we can intermediate results from the generator to avoid recalculating them
-    data_stats = {}
+    key_data_stats = {}
 
     # Append to existing CSV file or create a new one
     filename = "final_steady_state_opinions.csv"
@@ -24,6 +24,8 @@ def my_app(cfg):
         file = open(filename, "a", encoding="utf-8")
 
     for data in generator.generate():
+        # extract key statistics from the data
+        key_data_stats.update(data.get("key_stats", {}))
         dataset = pd.concat([dataset, pd.DataFrame([data], columns=dataset.columns)], axis=0,  ignore_index=True)
     
     # We assume the opinions converged on the last step
@@ -36,7 +38,7 @@ def my_app(cfg):
     file.close()
 
     # Plotting
-    plotter = Plotter(dataset, data_stats)
+    plotter = Plotter(dataset, key_data_stats)
     plotter.plot_estimation_error()
     plotter.plot_opinion_evolution()
 

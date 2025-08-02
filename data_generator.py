@@ -3,6 +3,7 @@ import logging
 import sys
 import numpy as np
 from enum import Enum
+from typing import Optional
 
 from adversarial_agent import AdversarialAgent
 from controller import Controller
@@ -73,6 +74,7 @@ class DataGenerator:
         self.adversary = AdversarialAgent(
             num_users=self.num_users, 
             gamma=config['adversary']['gamma'],
+            initial_opinions=self.state.opinion_state
         )
         
         # initialize controller
@@ -116,13 +118,12 @@ class DataGenerator:
         else:
             raise ValueError(f"Unknown DataGeneratorType: {self.type}")
         
-        # controller_influences = np.eye(n_users) * 0.06
-        # attacker_influences = np.eye(n_users) * 0.05
-        
-        # self.log.info("User influence matrix:\n%s", user_influence_matrix)
-        # self.log.info("Controller influences:\n%s", controller_influences)
-        # self.log.info("Attacker influences:\n%s", attacker_influences)
+        self.log.debug("User influence matrix:\n%s", user_influence_matrix)
+        self.log.debug("Controller influences:\n%s", controller_influences)
+        self.log.debug("Attacker influences:\n%s", attacker_influences)
+
         initial_opinions = np.random.uniform(low=-1.0, high=1.0, size=self.num_users)
+        self.log.info("Initial opinions: %s", initial_opinions)
 
         return State(
             user_influence_matrix=user_influence_matrix,
@@ -131,67 +132,75 @@ class DataGenerator:
             opinion_state=initial_opinions
         )
         
-    def update_state(self, control_input: np.ndarray, attacker_input: np.ndarray, type: DataGeneratorType):
+    def update_state(self, generator_type: DataGeneratorType, control_input: Optional[np.ndarray] = None, attacker_input: Optional[np.ndarray] = None):
         """Opinion dynamics step
         type = "pure": pure system dynamics with no adversary, no controller
         type = "only_bad": system dynamics with adversary, no controller
         type = "with_actors": system dynamics with adversary and actor
         """
         # Get correct user weights depending on selected scenario
-        user_weights = self.state.get_user_influence_weights(type)
+        user_weights = self.state.get_user_influence_weights(generator_type)
 
         # Take one step according to selected scenario
-        if type == DataGeneratorType.PURE:
+        if generator_type == DataGeneratorType.PURE:
             self.state.opinion_state = (
                 user_weights @ self.state.user_influence_matrix @ self.state.opinion_state 
             )
-        elif type == DataGeneratorType.ONLY_BAD:
+        elif generator_type == DataGeneratorType.ONLY_BAD:
             self.state.opinion_state = (
                 user_weights @ self.state.user_influence_matrix @ self.state.opinion_state +
                 self.state.attacker_influences @ attacker_input
             )
-        elif type == DataGeneratorType.WITH_ACTORS:    
+        elif generator_type == DataGeneratorType.WITH_ACTORS:    
             self.state.opinion_state = (
                 user_weights @ self.state.user_influence_matrix @ self.state.opinion_state +
                 self.state.controller_influences @ control_input +
                 self.state.attacker_influences @ attacker_input
             )
         else:
-            raise ValueError(f"Unknown DataGeneratorType: {type}")
+            raise ValueError(f"Unknown DataGeneratotype: {generator_type}")
 
     def generate(self):
         """Generate simulation steps and return relevant metrics."""
 
-        stage: DataGeneratorType
+        stage: DataGeneratorType = DataGeneratorType.PURE  # Default stage
+        # After turning them on, we never turn them off, so we can initialize them here
+        control_input = None
+        attacker_input = None
         for step in range(self.num_steps):
-            if (step < self.T_pure):
+            key_stats = {}
+
+            if step == 0:
+                pass
+
+            elif (step < self.T_pure):
                 stage = DataGeneratorType.PURE
-                control_input = np.zeros(self.num_users) # placeholder controller input
-                attacker_input = np.zeros(self.num_users) # placeholder attacker input
 
                 # Update state
-                self.update_state(control_input, attacker_input, stage)
+                self.update_state(generator_type=stage)
 
                 # Define placeholder estimation_error
                 true_sensitivity = self.state.get_true_sensitivity_matrix()
                 estimation_error = 0
                 
+                # NOTE: This only works since we ovveride it and we need the last one.
                 # pass opinions to controller as target
                 self.controller.target_opinion_states = self.state.opinion_state.copy()
+                key_stats["steady_state"] = self.state.opinion_state.copy()
+
             
-            if (step >= self.T_pure and step < self.T_only_bad + self.T_pure):   
+            elif (step >= self.T_pure and step < self.T_only_bad + self.T_pure):
                 stage = DataGeneratorType.ONLY_BAD
-                control_input = np.zeros(self.num_users) # placeholder input                             
                 attacker_input = self.adversary.get_input() # get attacker input
 
                 # Update state
-                self.update_state(control_input, attacker_input, stage)
+                self.update_state(generator_type=stage, attacker_input=attacker_input)
                 
                 # Define placeholder estimation_error
                 true_sensitivity = self.state.get_true_sensitivity_matrix()
                 estimation_error = 0
 
-            if (step >= self.T_only_bad + self.T_pure):
+            elif (step >= self.T_only_bad + self.T_pure):
                 stage = DataGeneratorType.WITH_ACTORS
                 # Update Kalman filter in controller, then get control input
                 self.controller.step(self.state, step=step-self.T_only_bad-self.T_pure)   # hardcoded step offset
@@ -201,14 +210,14 @@ class DataGenerator:
                 attacker_input = self.adversary.get_input()
 
                 # Update state
-                self.update_state(control_input, attacker_input, stage)
+                self.update_state(generator_type=stage, attacker_input=attacker_input, control_input=control_input)
             
                 # Compute estimation error
                 true_sensitivity = self.state.get_true_sensitivity_matrix()
                 estimation_error = np.linalg.norm(self.controller.sensitivity_estimate - true_sensitivity, 'fro')
             
             # self.log.info progress every 10 steps (for debugging, can be removed)
-            if step % 10 == 0:
+            if step % 10 == 0 and step > 0:
                 self.log.debug("\nStep %d:", step)
                 self.log.debug("Estimated sensitivity:\n%s", np.array2string(self.controller.sensitivity_estimate, formatter={'float_kind':'{:0.2f}'.format}))
                 self.log.debug("True sensitivity:\n%s", np.array2string(true_sensitivity, formatter={'float_kind':'{:0.2f}'.format}))
@@ -219,11 +228,12 @@ class DataGenerator:
             yield {
                 'step': step,
                 'opinion_state': self.state.opinion_state.copy(),
-                'control_input': control_input.copy(),
-                'attacker_input': attacker_input.copy(),
+                'control_input': control_input.copy() if control_input is not None else np.zeros(self.num_users),
+                'attacker_input': attacker_input.copy() if attacker_input is not None else np.zeros(self.num_users),
                 'sensitivity_estimate': self.controller.sensitivity_estimate,
                 'kalman_covariance_trace': self.controller.kalman_covariance_trace,
-                'estimation_error': estimation_error,
-                "stage": stage.name
+                'estimation_error': estimation_error if step > 0 else 0,  # Avoid error on first step
+                "stage": stage.name,
+                "key_stats": key_stats
             }
     
